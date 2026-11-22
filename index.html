@@ -101,7 +101,7 @@ ol.legs:not(.open) li:nth-child(n+6) { display: none; }
 .pd-ok { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--done); color: #10202a; margin-right: 4px; }
 .pd-more { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font: inherit; font-weight: 600; cursor: pointer; }
 .vt { position: fixed; inset: 0; z-index: 60; background: #070d16; display: flex; flex-direction: column; align-items: center; padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); gap: 10px; }
-.vt[hidden] { display: none; }
+.vt[hidden], .vt-end[hidden], .legs-more[hidden], .pdone[hidden], .unl-buy[hidden] { display: none !important; }
 .vt-top { width: 100%; max-width: 520px; display: flex; gap: 8px; justify-content: space-between; }
 .vt-b { height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--ink); font-family: var(--mono); font-size: 13px; cursor: pointer; }
 .vt-share { border-color: var(--brass); color: var(--brass); margin-left: auto; }
@@ -113,6 +113,24 @@ ol.legs:not(.open) li:nth-child(n+6) { display: none; }
 .vt-alt { height: 44px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--ink); font-family: var(--mono); font-size: 14px; cursor: pointer; }
 .vt-bar { width: 100%; max-width: 520px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
 .vt-bar i { display: block; height: 100%; width: 0; background: var(--brass); }
+.unl { position: fixed; inset: 0; z-index: 70; background: rgba(5,10,18,.78); display: grid; place-items: center; padding: 16px; }
+.unl[hidden] { display: none; }
+.unl-card { position: relative; width: 100%; max-width: 420px; max-height: 92dvh; overflow: auto; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 22px 20px; }
+.unl-card h2 { font-family: var(--display); font-weight: 400; margin: 4px 0 8px; font-size: 26px; }
+.unl-x { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--ink); cursor: pointer; }
+.unl-why { color: var(--brass); margin: 0 0 10px; }
+.unl-list { margin: 0 0 16px; padding-left: 20px; color: var(--ink); line-height: 1.6; }
+.unl-buy { display: block; text-align: center; padding: 14px; border-radius: 14px; background: var(--brass); color: #1b1408; font-family: var(--mono); font-weight: 600; text-decoration: none; }
+.unl-small { color: var(--muted); font-size: 13px; margin: 8px 0 16px; text-align: center; }
+.unl-f label { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.unl-row { display: flex; gap: 8px; margin-top: 6px; }
+.unl-row input { flex: 1; min-width: 0; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: #0b1522; color: var(--ink); padding: 0 12px; font-family: var(--mono); font-size: 15px; letter-spacing: .04em; }
+.unl-row button { height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-weight: 600; cursor: pointer; }
+.unl-msg { min-height: 1.2em; margin: 8px 0 0; font-size: 14px; }
+.unl-msg.ok { color: var(--done); } .unl-msg.bad { color: #f19a8f; }
+.probar { display: flex; justify-content: center; margin: 18px 0 6px; }
+.probtn { padding: 10px 16px; border-radius: 12px; border: 1px dashed var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-size: 14px; cursor: pointer; }
+.probtn.on { border-style: solid; border-color: var(--done); color: var(--done); cursor: default; }
 ol.legs li.active { outline: 1px solid var(--ink); }
 .num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; border: 2px solid var(--brass); color: var(--brass); }
 li.done .num { background: var(--done); border-color: var(--done); color: var(--sea); }
@@ -486,6 +504,27 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
 
   <section class="detail" id="detail" aria-live="polite"></section>
 
+<div class="unl" id="unl" role="dialog" aria-modal="true" aria-labelledby="unl-h" hidden>
+  <div class="unl-card">
+    <button class="unl-x" id="unl-x" aria-label="Close">✕</button>
+    <div class="eyebrow">Full version</div>
+    <h2 id="unl-h">Unlock your whole reading year</h2>
+    <p class="unl-why" id="unl-why"></p>
+    <ul class="unl-list">
+      <li>Add every book you read: no limit</li>
+      <li>Save and share your 2026 in books video and picture</li>
+      <li>Save and share your bookworm voyage film</li>
+      <li>One payment, yours to keep</li>
+    </ul>
+    <a class="unl-buy" id="unl-buy" target="_blank" rel="noopener">Get the full version · $1 →</a>
+    <p class="unl-small">After paying, your unlock code is on the receipt and in your email.</p>
+    <form class="unl-f" id="unl-f">
+      <label for="unl-code">Have a code?</label>
+      <div class="unl-row"><input id="unl-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="VOYAGE-XXXX-XXXX"><button type="submit">Unlock</button></div>
+      <p class="unl-msg" id="unl-msg" aria-live="polite"></p>
+    </form>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <h3>The route</h3>
@@ -493,6 +532,7 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
   <button type="button" class="legs-more" id="legs-more" hidden></button>
   <p class="note">Every book you add goes on the map automatically. Your books are saved on this device.</p>
 
+  <div class="probar"><button type="button" class="probtn" id="probtn">🔓 Unlock full version</button></div>
   <section class="cta" id="cta">
     <div class="cta-worm"><svg id="cta-worm" viewBox="0 0 340 70" aria-hidden="true"></svg></div>
     <div class="eyebrow">That's your 2026</div>
@@ -546,6 +586,33 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 <script>
+// ---- free demo + unlock code ----
+// Paste your Gumroad / Lemon Squeezy product link here:
+const BUY_URL = "";
+const FREE_MAX = 10;   // books in the free version
+const PRO_KEY = "litvoyage-pro-v1", PRO_SALT = "litvoyage-2026:";
+const PRO_HASHES = ["4830ee0513ad733b5eb8ac6b93b5fe786930b68ea61e8b84f456e94bce6bb58f", "208316e0623efa4b51ef7879fbb9121e08ed101cf4544fa92f698a1640a8e98c", "003bef2d2cd786bd5b49ad54ba6e5bd2734da5b094fb2bdcc54bd4dd17addd07", "df06089557180ac5099cc8c15f341d219ee8db21ee13cca8d0121fb0bbb1aaeb", "dce53d1c9704a48cfcb692e2a590a0c4a30bb072c8b28d3ddb2ba05b81b35d38", "c06cca3c09db7cfbded24f2c61cf2ae443a396d8d0c92ae1f59f0bcec5281342", "1756f2b7a30db489611dee9387eafacbd5525255542e8d444946890c6bb8aaf5", "3692a9132899b4e9f5b4410526c2beaa765c9455596b2e6c21a01ac4e699e7b1", "2f66c43d67b66183a386a590d9562ca6ae8048528c5ab8cb9aa0c6e9357c9f30", "0605ebdaab2eba475577774d58b6471db5c9f2689679c9bbbd14834638a15b1f", "de99131b1472a1e5c3dae7650644405b103e0abbcac36dfbd0981be40afe39bf", "9518e0a5c041249ae84372c160de6ca3d133911132baf351dae286733986a48c", "65f85e049e40f0f859d78b01ae9e3ed67016336b65bfd976ad9158229e90e025", "b2140ddb42e3580a7bc8edb5604efb3dc97037dfc72138978ba5ebb277cc29e8", "bfdc944190b23660bfdbe40f24a09ff4dafc2a3c8a1e4d9d0bd46509b3895c01", "99f3fee74e0eb951f83f9ac512cff90c154166aeb6779ce2e40702df105a5099", "147bcb77178518b78183f6eca27dc3d77314a3831883fb0d603532a56e0befbf", "8aa255d6a458afd86b45c6bf09d8371e02dc6f08c9769db298ca29075f510d47", "a04cb92240799479631a198658511921fafe741977a1167e33775aaf2c165e8b", "02199f5f3788bd788021358fb380f1e21f76dbd13cb51b838b0c845cd96ef77d", "d9d7c8734a66aaf1744cf531be7bb0f2b8b630b432d971046185d959e3140dbe"];
+let PRO = (() => { try { return PRO_HASHES.includes(localStorage.getItem(PRO_KEY)); } catch (e) { return false; } })();
+let PENDING_BOOKS = [];
+function isPro() { return PRO; }
+async function sha256(t) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+function showUnlock(why) {
+  const u = document.getElementById("unl");
+  document.getElementById("unl-why").textContent = why || "";
+  document.getElementById("unl-why").hidden = !why;
+  const buy = document.getElementById("unl-buy");
+  if (BUY_URL) { buy.href = BUY_URL; buy.hidden = false; } else buy.hidden = true;
+  document.getElementById("unl-msg").textContent = ""; document.getElementById("unl-msg").className = "unl-msg";
+  u.hidden = false;
+}
+function proUI() {
+  const b = document.getElementById("probtn"); if (!b) return;
+  b.textContent = PRO ? "✓ Full version unlocked" : "🔓 Unlock full version"; b.classList.toggle("on", PRO);
+}
+
 const STOPS = [];
 const GENRES = {
   "The Gambler": "Psychological fiction", "White Nights": "Romance", "Heart of a Dog": "Satire",
@@ -1396,6 +1463,7 @@ function buildSlides(S) {
         const failMsg = err => { const c = err && err.code; return c === "declined" ? "No problem, nothing was saved." : c === "rate_limited" ? "One moment, then try again." : "Couldn't save it in this view."; };
         const saveImg = async e => {
           e.stopPropagation(); pauseSlides();
+          if (!isPro()) { showUnlock("Saving and sharing is part of the full version."); return; }
           if (!DL) { msg.textContent = "Saving isn't available in this browser."; return; }
           const still = document.createElement("canvas"); still.width = CARD.W; still.height = CARD.H;
           await drawShareCard(still, S);
@@ -1407,6 +1475,7 @@ function buildSlides(S) {
         let busy = false;
         const saveVid = async (e, thenPost) => {
           e.stopPropagation(); pauseSlides();
+          if (!isPro()) { showUnlock("Saving and sharing your video is part of the full version."); return; }
           if (busy) return;
           if (!DL) { msg.textContent = "Saving isn't available in this browser."; return; }
           if (!videoType()) return saveImg(e);
@@ -1641,9 +1710,18 @@ function makeSprite(it, i, S, size) {
 function buildVoyage(S) {
   // one stop per country, in the order the reader first got there; books stay in reading order
   const groups = [];
-  S.J.forEach(b => { let g = groups.find(x => x.country === b.country); if (!g) { g = { country: b.country, iso: b.iso, lon: b.lon, lat: b.lat, books: [] }; groups.push(g); } g.books.push(b); });
+  S.J.forEach(b => { let g = groups.find(x => x.country === b.country); if (!g) { g = { country: b.country, iso: b.iso, lon: NaN, lat: NaN, books: [] }; groups.push(g); } g.books.push(b); });
+  // every stop needs real coordinates, or the film's clock breaks and it ends early
+  groups.forEach(g => {
+    const b = g.books.find(x => isFinite(+x.lon) && isFinite(+x.lat) && x.lon !== "" && x.lat !== "");
+    let c = b ? [+b.lon, +b.lat] : null;
+    if (!c && typeof centroidOf === "function") { try { c = centroidOf(g.iso); } catch (e) { c = null; } }
+    if (c && isFinite(c[0]) && isFinite(c[1])) { g.lon = c[0]; g.lat = c[1]; }
+  });
+  for (let i = groups.length - 1; i >= 0; i--) if (!isFinite(groups[i].lon)) groups.splice(i, 1);
+  if (!groups.length) groups.push({ country: "", iso: "", lon: 0, lat: 20, books: S.J.slice() });
   const ev = []; let t = 2.4;
-  const totalBooks = S.J.length;
+  const totalBooks = d3.sum(groups, g => g.books.length);
   let per = 1.9; // seconds each book stays on screen
   const travelOf = (a, b) => Math.min(2.8, 1.4 + d3.geoDistance([a.lon, a.lat], [b.lon, b.lat]) * .6);
   let est = 2.4 + 4.2 + d3.sum(groups.slice(1), (g, i) => travelOf(groups[i], g)) + totalBooks * per;
@@ -3006,6 +3084,13 @@ function refit() {
   render();
 }
 async function addBooks(list) {
+  if (!isPro()) {
+    const room = Math.max(0, FREE_MAX - STOPS.filter(s => s.added).length);
+    if (list.length > room) {
+      PENDING_BOOKS = list.slice(room); list = list.slice(0, room);
+      showUnlock(`The free version holds ${FREE_MAX} books. ${PENDING_BOOKS.length} more ${PENDING_BOOKS.length === 1 ? "is" : "are"} waiting: unlock to add ${PENDING_BOOKS.length === 1 ? "it" : "them all"}.`);
+    }
+  }
   const have = new Set(STOPS.map(bookKey));
   list = list.filter(b => { const k = bookKey(b); if (STOPS.some(s => s.id && s.id === b.id) || have.has(k)) return false; have.add(k); return true; });
   if (!list.length) return;
@@ -3035,6 +3120,24 @@ sizeStops();
 if (!reduce) d3.timer(() => WORMS.forEach(w => w.draw()));
 if (!reduce && STOPS.length > 1) setTimeout(playVoyage, 800);
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+
+document.getElementById("unl-x").onclick = () => { document.getElementById("unl").hidden = true; };
+document.getElementById("unl").onclick = e => { if (e.target.id === "unl") e.target.hidden = true; };
+document.getElementById("probtn").onclick = () => { if (!PRO) showUnlock(""); };
+document.getElementById("unl-f").onsubmit = async e => {
+  e.preventDefault();
+  const msg = document.getElementById("unl-msg"), raw = document.getElementById("unl-code").value;
+  const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!code) { msg.className = "unl-msg bad"; msg.textContent = "Type the code from your receipt."; return; }
+  let h = "";
+  try { h = await sha256(PRO_SALT + code); } catch (err) { msg.className = "unl-msg bad"; msg.textContent = "Open the app from its https link to unlock."; return; }
+  if (!PRO_HASHES.includes(h)) { msg.className = "unl-msg bad"; msg.textContent = "That code doesn't match. Check for typos (0 and O, 1 and I aren't used)."; return; }
+  PRO = true; try { localStorage.setItem(PRO_KEY, h); } catch (err) {}
+  msg.className = "unl-msg ok"; msg.textContent = "Unlocked. Thank you for supporting Literary Voyage!";
+  proUI();
+  setTimeout(() => { document.getElementById("unl").hidden = true; if (PENDING_BOOKS.length) { const p = PENDING_BOOKS; PENDING_BOOKS = []; addBooks(p); setStatus(`Added the other ${p.length} books.`); } }, 1200);
+};
+proUI();
 </script>
 </body>
 </html>
