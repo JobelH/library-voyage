@@ -193,6 +193,26 @@ button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid
 .podcard .pc .nm { font-size: 12px; font-weight: 600; line-height: 1.3; }
 .podcard .pc .au { font-size: 11px; opacity: .75; margin-top: -4px; }
 @keyframes rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+.mbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.mcell { border: 1px solid var(--border); border-radius: 10px; background: #0b1522; padding: 8px; display: grid; gap: 6px; align-content: start; min-height: 86px; transition: border-color .2s, transform .2s, background .2s; cursor: default; }
+.mcell.hot { border-color: var(--brass); background: #13233a; transform: translateY(-2px); }
+.mcell.armed { border-style: dashed; border-color: var(--done); cursor: pointer; }
+.mcell.top { border-color: rgba(242,177,76,.7); }
+.mhd { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.mname { font-family: var(--display); font-size: 16px; }
+.mmeta { font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-align: right; }
+.mbooks { display: flex; flex-wrap: wrap; gap: 4px; }
+.mbooks .sp { width: 22px; height: 36px; border-radius: 2px 4px 4px 2px; box-shadow: inset 3px 0 0 rgba(0,0,0,.25); cursor: grab; touch-action: none; border: 2px solid transparent; }
+.mbooks .sp.sel { border-color: var(--done); transform: translateY(-3px); }
+.mtray { border: 1px dashed var(--border); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
+.mtray[hidden] { display: none; }
+.mtl { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.mbars { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end; height: 150px; margin-top: 8px; }
+.mbars .mb { border-radius: 4px 4px 0 0; background: currentColor; opacity: .3; height: 0; animation: growh .8s cubic-bezier(.2,.8,.2,1) forwards; }
+.mbars .mb.pk { opacity: 1; background: #f2b14c; }
+.mlabels { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; font-family: var(--mono); font-size: 9px; text-align: center; opacity: .75; }
+@keyframes growh { to { height: var(--h); } }
 .dbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .bestbtn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-size: 12px; cursor: pointer; }
 .editrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 6px; }
@@ -316,7 +336,7 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
   ol.legs li { grid-template-columns: 28px 1fr; }
   .li-dates { grid-column: 2; text-align: left; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .stamp, .wr-time .dot, .gatsby span, .gatsby .gx, .chips span, .podcard .pc { opacity: 1; } .gtrack i { width: var(--w); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .stamp, .wr-time .dot, .gatsby span, .gatsby .gx, .chips span, .podcard .pc { opacity: 1; } .mbars .mb { height: var(--h); } .gtrack i { width: var(--w); } }
 </style>
 </head>
 <body>
@@ -401,6 +421,13 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
     <p class="hint2">Drag a book onto 1, 2 or 3, or tap a book and then tap a spot. Your number 1 is your best book of 2026.</p>
   </section>
 
+  <section class="mbox" id="mbox">
+    <div class="add-head"><h3 style="margin:0">Month by month</h3><span class="t3hint" id="mhint">Drag a book to the month you read it</span></div>
+    <div class="mgrid" id="mgrid"></div>
+    <div class="mtray" id="mtray" hidden><div class="mtl">Not sure when <span id="mtrayn"></span></div><div class="mbooks" id="mtraybooks"></div></div>
+    <p class="hint2">Imported books use the date you finished them. Books you add by typing or pasting go into the month you add them, so drag any that belong somewhere else, or tap a book and then tap its month.</p>
+  </section>
+
   <section class="detail" id="detail" aria-live="polite"></section>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -460,9 +487,20 @@ const BEST_KEY = "litvoyage-best-v1";
 let bestKey = (() => { try { return localStorage.getItem(BEST_KEY) || ""; } catch (e) { return ""; } })();
 const TOP_KEY = "litvoyage-top3-v1";
 let top3 = (() => { try { const a = JSON.parse(localStorage.getItem(TOP_KEY) || "[]"); return Array.isArray(a) ? a.concat(["", "", ""]).slice(0, 3) : ["", "", ""]; } catch (e) { return ["", "", ""]; } })();
+const MONTH_KEY = "litvoyage-months-v1";
+let monthMap = (() => { try { const o = JSON.parse(localStorage.getItem(MONTH_KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function bookMonth(b) {
+  const k = b.title.toLowerCase();
+  if (k in monthMap && monthMap[k] !== null) return +monthMap[k];
+  const m = /^Read\s+([A-Z][a-z]{2})/.exec(b.dates || "");
+  return m && MONTHS.indexOf(m[1]) >= 0 ? MONTHS.indexOf(m[1]) : null;
+}
+function setMonth(title, m) { monthMap[title.toLowerCase()] = m; saveMeta(); }
 function saveMeta() {
-  try { localStorage.setItem(TOP_KEY, JSON.stringify(top3)); localStorage.setItem(BEST_KEY, bestKey); } catch (e) {}
-  if (typeof BOOKS_COL !== "undefined" && BOOKS_COL) BOOKS_COL.doc("_meta").set({ best: bestKey, top3 }).catch(() => {});
+  try { localStorage.setItem(TOP_KEY, JSON.stringify(top3)); localStorage.setItem(BEST_KEY, bestKey); localStorage.setItem(MONTH_KEY, JSON.stringify(monthMap)); } catch (e) {}
+  if (typeof BOOKS_COL !== "undefined" && BOOKS_COL) BOOKS_COL.doc("_meta").set({ best: bestKey, top3, months: monthMap }).catch(() => {});
 }
 function setTop(slot, title) {
   const key = title ? title.toLowerCase() : "";
@@ -637,6 +675,7 @@ function render() {
   document.getElementById("s-km").textContent = Math.round(km).toLocaleString("en-US");
   document.getElementById("s-bar").style.width = (read.length / STOPS.length * 100) + "%";
   renderTop3();
+  renderMonths();
 
   const nextIdx = STOPS.findIndex(s => !s.done);
   d3.select("#legs").selectAll("li").data(STOPS).join("li")
@@ -789,6 +828,78 @@ function dragify(el, title) {
   });
   el.addEventListener("click", e => { if (el.dataset.dragged) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
+let mSel = null, mSig = "";
+function renderMonths(force) {
+  const grid = document.getElementById("mgrid"); if (!grid) return;
+  if (t3drag) return;
+  const read = STOPS.filter(s => s.done);
+  document.getElementById("mbox").hidden = !read.length;
+  const sig = read.map(b => b.title + ":" + bookMonth(b)).join("|") + "#" + mSel;
+  if (!force && sig === mSig) return;
+  mSig = sig;
+  const by = MONTHS.map(() => []), none = [];
+  read.forEach(b => { const m = bookMonth(b); (m === null ? none : by[m]).push(b); });
+  const words = by.map(l => d3.sum(l, b => b.words || 0)), peak = d3.max(words) || 0;
+  grid.innerHTML = "";
+  const spine = (b, box) => {
+    const sp = document.createElement("div"); sp.className = "sp" + (mSel === b.title ? " sel" : "");
+    sp.style.background = coverBg(b.title); sp.title = b.title; sp.tabIndex = 0; sp.setAttribute("role", "button");
+    sp.setAttribute("aria-label", b.title + ". Tap, then tap a month.");
+    sp.onclick = e => { e.stopPropagation(); mSel = mSel === b.title ? null : b.title; renderMonths(true); };
+    dragTo(sp, b.title, ".mcell", cell => { setMonth(b.title, +cell.dataset.m); mSel = null; toast(b.title + " → " + MONTHS_FULL[+cell.dataset.m]); }, () => renderMonths(true));
+    box.append(sp);
+  };
+  MONTHS.forEach((mn, i) => {
+    const cell = document.createElement("div");
+    cell.className = "mcell" + (mSel ? " armed" : "") + (peak && words[i] === peak ? " top" : ""); cell.dataset.m = i;
+    cell.innerHTML = `<div class="mhd"><span class="mname">${mn}</span><span class="mmeta">${by[i].length ? by[i].length + (by[i].length > 1 ? " books" : " book") + "<br>" + Math.round(words[i] / 1000) + "k words" : ""}</span></div><div class="mbooks"></div>`;
+    by[i].forEach(b => spine(b, cell.querySelector(".mbooks")));
+    cell.onclick = () => { if (mSel) { setMonth(mSel, i); toast(mSel + " → " + MONTHS_FULL[i]); mSel = null; renderMonths(true); } };
+    grid.append(cell);
+  });
+  const tray = document.getElementById("mtray"); tray.hidden = !none.length;
+  document.getElementById("mtrayn").textContent = none.length ? "(" + none.length + ")" : "";
+  const tb = document.getElementById("mtraybooks"); tb.innerHTML = ""; none.forEach(b => spine(b, tb));
+  document.getElementById("mhint").textContent = mSel ? "Now tap a month" : "Drag a book to the month you read it";
+}
+// shared dragging for the month grid (same feel as the podium)
+function dragTo(el, title, selector, onDrop, after) {
+  el.addEventListener("pointerdown", e => {
+    if (e.button > 0 || t3drag) return;
+    const start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    let ghost = null, hot = null;
+    const at = (x, y) => { const t = document.elementFromPoint(x, y); return t && t.closest ? t.closest(selector) : null; };
+    const move = ev => {
+      if (ev.pointerId !== start.id) return;
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
+        t3drag = true;
+        ghost = document.createElement("div"); ghost.className = "t3ghost"; ghost.style.background = coverBg(title); ghost.textContent = title;
+        document.body.append(ghost);
+      }
+      ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px";
+      const h2 = at(ev.clientX, ev.clientY);
+      if (h2 !== hot) { if (hot) hot.classList.remove("hot"); hot = h2; if (hot) hot.classList.add("hot"); }
+      ev.preventDefault();
+    };
+    const finish = (ev, dropped) => {
+      if (ev && ev.pointerId !== start.id) return;
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", cancel);
+      const wasDrag = !!ghost;
+      if (ghost) ghost.remove();
+      document.querySelectorAll(selector + ".hot").forEach(x => x.classList.remove("hot"));
+      t3drag = false;
+      if (wasDrag) { el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 60); }
+      if (dropped && hot) onDrop(hot);
+      if (wasDrag) after && after();
+    };
+    const up = ev => finish(ev, true), cancel = ev => finish(ev, false);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+  });
+  el.addEventListener("click", e => { if (el.dataset.dragged) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+}
 function sizeStops() {
   stopG.selectAll("g.stop").each(function () {
     const s = d3.select(this);
@@ -932,6 +1043,10 @@ function yearStats() {
   S.badges = [];
   S.best = J.find(b => bestKey && b.title.toLowerCase() === bestKey) || null;
   S.top3 = top3.map(k => J.find(b => k && b.title.toLowerCase() === k) || null);
+  const byM = MONTHS.map(() => []); J.forEach(b => { const m = bookMonth(b); if (m !== null) byM[m].push(b); });
+  S.monthWords = byM.map(l => d3.sum(l, b => b.words || 0)); S.monthBooks = byM;
+  const pk = S.monthWords.indexOf(d3.max(S.monthWords));
+  S.peakMonth = d3.max(S.monthWords) > 0 ? pk : null;
   if (!S.top3.some(Boolean)) S.top3 = null;
   return S;
 }
@@ -1019,6 +1134,12 @@ function buildSlides(S) {
         const w = window._rtWorm = new Worm(m.append("g"), { size: 3 });
         WORMS.push(w); w.placeAt([210, 78], [340, 78]); w.reading(true);
       } },
+    ...(S.peakMonth !== null ? [{ bg: "#16323a", fg: "#e3f4f2", html: `
+        <div class="wr-k">Your biggest reading month</div>
+        <h2 class="wr-h" style="font-size:clamp(40px,12vw,60px)">${MONTHS_FULL[S.peakMonth]}</h2>
+        <p class="wr-p">You read about <b>${S.monthWords[S.peakMonth].toLocaleString("en-US")} words</b> in ${MONTHS_FULL[S.peakMonth]}, across ${S.monthBooks[S.peakMonth].length} ${S.monthBooks[S.peakMonth].length > 1 ? "books" : "book"}: ${shortList(S.monthBooks[S.peakMonth].map(b => b.title))}.</p>
+        <div class="mbars">${S.monthWords.map((w, i) => `<div class="mb${i === S.peakMonth ? " pk" : ""}" style="--h:${Math.max(3, w / S.monthWords[S.peakMonth] * 100)}%; animation-delay:${.3 + i * .06}s" title="${MONTHS[i]}: ${w.toLocaleString("en-US")} words"></div>`).join("")}</div>
+        <div class="mlabels">${MONTHS.map(m => `<span>${m[0]}</span>`).join("")}</div>` }] : []),
     ...(S.top3 ? [{ bg: "#2a1f3d", fg: "#f3ecff", html: `
         <div class="wr-k">Your top 3 of 2026</div>
         <h2 class="wr-h">${S.top3[0] ? "The best of your year" : "Your favourites"}</h2>
@@ -1531,12 +1652,12 @@ function buildStoryAssets(S, kind = "year") {
   const voy = kind === "year" ? null : buildVoyage(S);
   const scenes = kind === "voyage" ? [["voyagefull", voy.dur]] : [
     ["countries", 3.4], ["pages", 3], ["words", 3.2], ["distance", 3.6], ["time", 3.2], ["genre", 3.2],
-    ["places", 3], ["type", 3.4], ...(S.top3 ? [["top3", 4.4]] : S.best ? [["best", 3.6]] : []), ["passport", 2.2 + n * step + 2], ["outro", 3.6], ...(kind === "both" ? [["voyagefull", voy.dur]] : [])
+    ["places", 3], ["type", 3.4], ...(S.peakMonth !== null ? [["month", 3.8]] : []), ...(S.top3 ? [["top3", 4.4]] : S.best ? [["best", 3.6]] : []), ["passport", 2.2 + n * step + 2], ["outro", 3.6], ...(kind === "both" ? [["voyagefull", voy.dur]] : [])
   ];
   let t = 0; scenes.forEach(s => { s.push(t); t += s[1]; });
   return { sprites, step, scenes, dur: t, voy };
 }
-const SB = { top3: ["#2a1f3d", "#f3ecff"], vintro: ["#0f1b2b", "#e9eef4"], voutro: ["#12382b", "#e8f5dc"], voyage: ["#0f1b2b", "#e9eef4"], best: ["#f4ead5", "#2a2018"], countries: ["#12382b", "#e8f5dc"], pages: ["#f2b14c", "#1b1408"], words: ["#f4ead5", "#2a2018"], distance: ["#0f1b2b", "#e9eef4"], time: ["#b9553f", "#fbefe4"], genre: ["#2b2140", "#efe7ff"], places: ["#1d2f4a", "#e9eef4"], type: ["#3a2433", "#fbe9f0"], challenges: ["#16323a", "#e3f4f2"], passport: ["#1c1412", "#f4ead5"], outro: ["#12382b", "#e8f5dc"] };
+const SB = { month: ["#16323a", "#e3f4f2"], top3: ["#2a1f3d", "#f3ecff"], vintro: ["#0f1b2b", "#e9eef4"], voutro: ["#12382b", "#e8f5dc"], voyage: ["#0f1b2b", "#e9eef4"], best: ["#f4ead5", "#2a2018"], countries: ["#12382b", "#e8f5dc"], pages: ["#f2b14c", "#1b1408"], words: ["#f4ead5", "#2a2018"], distance: ["#0f1b2b", "#e9eef4"], time: ["#b9553f", "#fbefe4"], genre: ["#2b2140", "#efe7ff"], places: ["#1d2f4a", "#e9eef4"], type: ["#3a2433", "#fbe9f0"], challenges: ["#16323a", "#e3f4f2"], passport: ["#1c1412", "#f4ead5"], outro: ["#12382b", "#e8f5dc"] };
 
 function drawStory(c, S, A, t) {
   const { W, H, SERIF, MONO, SANS } = CARD, L = 80, MAXW = W - 2 * L;
@@ -1618,6 +1739,18 @@ function drawStory(c, S, A, t) {
     para(`${S.km >= 40075 ? `That's ${(S.km / 40075).toFixed(1)} times around the Earth` : `That's ${Math.round(S.km / 40075 * 100)}% of the way around the Earth`}, through ${S.countries.length} countries and ${S.J.length} books.`, 1080, ap(.8, 1.3), 42);
     drawWormCanvas(c, 620, 1420, 7, lt * .4); drawBookCanvas(c, 620, 1330, 5.5, lt);
     T("Good books take time. Read on in 2027.", W / 2, 1780, `500 30px ${MONO}`, fg, ap(1.6) * .8, "center");
+  } else if (name === "month") {
+    kicker("Your biggest reading month", 470);
+    const mn = MONTHS_FULL[S.peakMonth]; T(mn, L, 640, `400 ${fitSize(mn, MAXW, 150)}px ${SERIF}`, fg, ap(.2, .6));
+    para(`About ${S.monthWords[S.peakMonth].toLocaleString("en-US")} words across ${S.monthBooks[S.peakMonth].length} ${S.monthBooks[S.peakMonth].length > 1 ? "books" : "book"}.`, 740, ap(.6, 1), 42, 2);
+    const top = 900, base = 1500, bw = (MAXW - 11 * 14) / 12, mx = S.monthWords[S.peakMonth] || 1;
+    S.monthWords.forEach((w, i) => {
+      const p = easeOut((lt - .8 - i * .07) / .8), h = Math.max(10, (base - top) * w / mx) * p, x = L + i * (bw + 14);
+      c.globalAlpha = i === S.peakMonth ? 1 : .35; c.fillStyle = i === S.peakMonth ? "#f2b14c" : fg;
+      roundRect(c, x, base - h, bw, h, 10); c.fill();
+      c.globalAlpha = .8; c.fillStyle = fg; c.font = `500 28px ${MONO}`; c.textAlign = "center"; c.fillText(MONTHS[i][0], x + bw / 2, base + 50); c.textAlign = "left";
+    });
+    c.globalAlpha = 1;
   } else if (name === "top3") {
     kicker("Your top 3 of 2026", 470); h2(S.top3[0] ? "The best of your year" : "Your favourites", 580, 86);
     const cols = [[1, L, 300, 260], [0, L + 320, 300, 360], [2, L + 640, 280, 190]];
@@ -2584,6 +2717,7 @@ async function persistRemove(b) {
         if (meta && meta.data() && typeof meta.data().best === "string") {
           const md = meta.data(); bestKey = md.best;
           if (Array.isArray(md.top3)) top3 = md.top3.concat(["", "", ""]).slice(0, 3);
+          if (md.months && typeof md.months === "object") monthMap = Object.assign({}, md.months, monthMap);
           try { localStorage.setItem(BEST_KEY, bestKey); localStorage.setItem(TOP_KEY, JSON.stringify(top3)); } catch (e) {}
           render();
         } else if (bestKey || top3.some(Boolean)) saveMeta();
@@ -2614,7 +2748,8 @@ async function addBooks(list) {
   if (!list.length) return;
   runId++; playing = false; playBtn.textContent = "▶ Play the voyage";
   const first = insertAt();
-  list.forEach((b, i) => { b.order = Date.now() + i; STOPS.splice(insertAt(), 0, b); });
+  list.forEach((b, i) => { b.order = Date.now() + i; STOPS.splice(insertAt(), 0, b); if (bookMonth(b) === null) monthMap[b.title.toLowerCase()] = new Date().getMonth(); });
+  saveMeta();
   persistAdd(list);
   refit();
 
