@@ -1,0 +1,16 @@
+{
+  "name": "Literary Voyage",
+  "short_name": "Lit Voyage",
+  "description": "Map the books you read, watch a bookworm crawl your reading year, and share your year in books.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1b2b",
+  "theme_color": "#0f1b2b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

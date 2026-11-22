@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Literary Voyage</title>
+<meta name="description" content="Map the books you read, watch a bookworm crawl your reading year, and share your year in books.">
+<meta name="theme-color" content="#0f1b2b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Literary Voyage">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* One visual world: a night-flight atlas. Map on top, passport of stops below, a year-end summary as story cards. */
+  --sea: #0f1b2b;
+  --land: #22344a;
+  --border: #36506d;
+  --ink: #e9eef4;
+  --muted: #8ea3ba;
+  --brass: #f2b14c;
+  --done: #7fd1a8;
+  --card: #15253a;
+  --paper: #f4ead5;
+  --cover: #b9553f;
+  --forest: #12382b;
+  --display: "Young Serif", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--sea); color: var(--ink); font-family: var(--body); }
+body { padding: calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
+.wrap { max-width: 900px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--brass); }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 6vw, 38px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 15px; margin: 0; max-width: 60ch; line-height: 1.5; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.stat b { display: block; font-family: var(--mono); font-weight: 500; font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.bar { height: 4px; background: var(--land); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--done); width: 0; transition: width .4s; }
+.sumrow { display: flex; flex-wrap: wrap; gap: 10px; }
+.sumbtn.alt { background: transparent; color: var(--brass); }
+.sumbtn { justify-self: start; height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--brass); background: var(--brass); color: #1b1408; font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer; }
+
+.mapbox { position: relative; background: #0b1522; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+svg { display: block; width: 100%; height: auto; }
+#map { touch-action: none; }
+.country { fill: var(--land); stroke: var(--border); stroke-width: .5; vector-effect: non-scaling-stroke; transition: fill .6s; }
+.country.plan { fill: #3a3a2c; }
+.country.visited { fill: #2f5a46; }
+.graticule { fill: none; stroke: #1a2a3e; stroke-width: .5; vector-effect: non-scaling-stroke; }
+.leg { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+.leg.todo { stroke: var(--brass); stroke-dasharray: 2 6; opacity: .7; animation: march 1.2s linear infinite; }
+.leg.done { stroke: var(--done); }
+@keyframes march { to { stroke-dashoffset: -16; } }
+.trail { fill: none; stroke: #8fcf6a; stroke-width: 3; stroke-dasharray: 0.5 6; vector-effect: non-scaling-stroke; stroke-linecap: round; opacity: .85; }
+.play { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--brass); background: var(--card); color: var(--brass); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.nowat { position: absolute; left: 10px; bottom: 8px; font-family: var(--mono); font-size: 12px; color: var(--ink); background: rgba(11,21,34,.8); padding: 4px 8px; border-radius: 6px; }
+.stop { cursor: pointer; }
+.stop circle.dot { stroke-width: 2; vector-effect: non-scaling-stroke; }
+.stop.todo circle.dot { fill: var(--sea); stroke: var(--brass); }
+.stop.done circle.dot { fill: var(--done); stroke: var(--done); }
+.stop.active circle.ring { stroke: var(--ink); }
+.stop circle.ring { fill: none; stroke: transparent; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.stop text.n { font-family: var(--mono); fill: var(--ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.stop.done text.n { fill: var(--sea); }
+.clabel { font-family: var(--display); fill: var(--ink); paint-order: stroke; stroke: #0b1522; stroke-width: 3px; pointer-events: none; letter-spacing: .02em; }
+.hint { position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.zoom { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; }
+.zoom button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--ink); font-size: 18px; cursor: pointer; }
+
+.detail { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brass); border-radius: 10px; padding: 16px; display: grid; gap: 8px; }
+.detail.isdone { border-left-color: var(--done); }
+.detail .place { font-family: var(--mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.detail h2 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; text-wrap: balance; }
+.detail .by { color: var(--muted); font-size: 14px; }
+.detail p { margin: 0; line-height: 1.55; font-size: 15px; max-width: 65ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.pill { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+.pill.ok { color: var(--done); border-color: var(--done); }
+.pill.next { color: var(--brass); border-color: var(--brass); }
+
+h3 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 8px 0 0; }
+ol.legs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+ol.legs li { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+ol.legs li.active { outline: 1px solid var(--ink); }
+.num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; border: 2px solid var(--brass); color: var(--brass); }
+li.done .num { background: var(--done); border-color: var(--done); color: var(--sea); }
+.li-title { font-weight: 600; font-size: 15px; }
+.li-sub { font-size: 13px; color: var(--muted); }
+.li-dates { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+.note { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 65ch; margin: 0; }
+button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* bookworm */
+.worm .seg { fill: #8fcf6a; stroke: #3f7a33; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.worm .seg.alt { fill: #a9df86; }
+.whead .hd { fill: #a3e07e; stroke: #3f7a33; stroke-width: .25; }
+.whead .eye { fill: #fff; }
+.whead .pupil { fill: #1a2430; }
+.whead .gl { fill: none; stroke: var(--brass); stroke-width: .45; }
+.whead .cheek { fill: #f49b9b; opacity: .7; }
+.wbook .cover { fill: var(--cover); }
+.wbook .page { fill: var(--paper); }
+.wbook .txt { stroke: #b8ab92; stroke-width: .35; }
+.wbook .flip { transform-box: fill-box; transform-origin: left center; animation: flip 1.1s ease-in-out infinite; fill: #fffaf0; }
+@keyframes flip { 0%, 15% { transform: scaleX(1); } 55%, 100% { transform: scaleX(-1); } }
+
+/* year summary: story cards */
+.wr { position: fixed; inset: 0; z-index: 50; display: none; background: rgba(5,10,18,.85); place-items: center; padding: 12px; }
+.wr.open { display: grid; }
+.wr-card { position: relative; width: min(420px, 100%); height: min(760px, 100%); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: background .5s, color .5s; }
+.wr-bars { display: flex; gap: 4px; padding: 12px 14px 0; position: relative; z-index: 3; }
+.wr-bars span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.28); overflow: hidden; }
+.wr-bars span i { display: block; height: 100%; width: 0; background: currentColor; }
+.wr-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 0; position: relative; z-index: 3; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.wr-tr { display: flex; gap: 8px; align-items: center; }
+.wr-snd { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+.wr-snd[aria-pressed="true"] { background: #f2b14c; border-color: #f2b14c; color: #1b1408; }
+.wr-snd[hidden] { display: none; }
+.wr-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
+.wr-body { flex: 1; min-width: 0; overflow: hidden; position: relative; padding: 18px 24px 24px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.wr-tapl, .wr-tapr { position: absolute; top: 60px; bottom: 0; z-index: 2; }
+.wr-tapl { left: 0; width: 30%; } .wr-tapr { right: 0; width: 70%; }
+.wr-k { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.wr-big { display: inline-block; align-self: flex-start; white-space: nowrap; max-width: none; font-family: var(--display); font-size: clamp(64px, 22vw, 104px); line-height: .95; font-variant-numeric: tabular-nums; }
+.wr-h { font-family: var(--display); font-size: clamp(24px, 7vw, 32px); line-height: 1.15; text-wrap: balance; margin: 0; }
+.wr-p { font-size: 15px; line-height: 1.55; margin: 0; opacity: .92; max-width: 34ch; }
+.wr-row { display: flex; gap: 18px; flex-wrap: wrap; }
+.wr-mini b { display: block; font-family: var(--display); font-size: 34px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.wr-mini span { font-size: 12px; font-family: var(--mono); opacity: .8; }
+.wr-map { width: 100%; border-radius: 10px; }
+.wr-map .country { fill: rgba(255,255,255,.12); stroke: none; }
+.wr-map .country.visited { fill: #a9df86; }
+.wr-time { position: relative; height: 70px; margin-top: 8px; }
+.wr-time .line { position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: currentColor; opacity: .35; }
+.wr-time .dot { position: absolute; top: 24px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: currentColor; opacity: 0; animation: pop .4s forwards; }
+.wr-time .yr { position: absolute; top: 46px; font-family: var(--mono); font-size: 11px; transform: translateX(-50%); }
+@keyframes pop { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: scale(1); } }
+.stamps { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stamp { border: 2px dashed currentColor; border-radius: 10px; padding: 10px; text-align: center; opacity: 0; animation: thump .45s cubic-bezier(.3,1.6,.5,1) forwards; }
+.stamp b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: .04em; text-transform: uppercase; }
+.stamp span { display: block; font-size: 11px; font-family: var(--mono); margin-top: 4px; line-height: 1.4; }
+@keyframes thump { from { opacity: 0; transform: scale(1.8) rotate(var(--r)); } to { opacity: .95; transform: scale(1) rotate(var(--r)); } }
+.wr-btns { display: flex; gap: 10px; flex-wrap: wrap; position: relative; z-index: 3; }
+.wr-btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid currentColor; background: transparent; color: inherit; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.wr-btn.solid { background: currentColor; }
+.wr-btn.solid span { color: var(--cardbg, #1b1408); font-weight: 600; }
+.wr-btn.solid { border-color: transparent; }
+.wr-share .wr-btn.solid { width: 100%; justify-content: center; height: 46px; }
+.wr-btn { display: inline-flex; align-items: center; justify-content: center; }
+.wr-btn[hidden] { display: none; }
+.wr-worm { width: 100%; height: 90px; }
+.dbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.bestbtn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.bestbtn.on { background: var(--brass); color: #1b1408; }
+.zoomcity { justify-self: start; height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #f49b9b; background: transparent; color: #f49b9b; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 140%); background: var(--brass); color: #1b1408; padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: transform .4s cubic-bezier(.3,1.4,.5,1); z-index: 60; max-width: calc(100% - 32px); text-align: center; }
+.toast.on { transform: translate(-50%, 0); }
+.addbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.add-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 6px; }
+.tab { height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.tab[aria-selected="true"] { border-color: var(--brass); color: var(--brass); }
+.qrow { display: flex; gap: 8px; }
+.qrow input { flex: 1; min-width: 0; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: #0b1522; color: var(--ink); padding: 0 12px; font: 16px var(--body); }
+.qrow input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+.go { height: 44px; padding: 0 18px; border-radius: 10px; border: none; background: var(--brass); color: #1b1408; font-family: var(--mono); font-weight: 500; cursor: pointer; }
+.go:disabled { opacity: .5; cursor: default; }
+.filebtn { display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 10px; border: 1px dashed var(--brass); color: var(--brass); font-family: var(--mono); font-size: 13px; cursor: pointer; }
+.hint2 { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 65ch; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pastef { display: grid; gap: 8px; }
+.pastef textarea { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #0b1522; color: var(--ink); padding: 10px 12px; font: 15px/1.5 var(--body); resize: vertical; }
+.pastef textarea:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+.pastef .go { justify-self: start; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink); }
+.chk input { width: 18px; height: 18px; accent-color: var(--brass); }
+.add-status { font-size: 13px; color: var(--muted); font-family: var(--mono); min-height: 1em; }
+.add-status.err { color: #f49b9b; }
+.add-results { display: grid; gap: 8px; }
+.cand { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; background: #0b1522; border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.cand .ct { font-weight: 600; font-size: 15px; }
+.cand .cm { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.cand .cb { font-size: 13px; line-height: 1.5; margin-top: 6px; }
+.cand button { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--done); background: transparent; color: var(--done); font-family: var(--mono); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.pick { display: flex; gap: 6px; align-items: center; }
+.pick select { height: 36px; max-width: 150px; border-radius: 8px; border: 1px solid var(--border); background: #0b1522; color: var(--ink); font: 13px var(--body); }
+.cand.imp { grid-template-columns: auto 1fr; }
+.cand.imp input { width: 20px; height: 20px; accent-color: var(--done); }
+.rt-name { font-size: clamp(32px, 10vw, 46px); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips span { border: 1px solid currentColor; border-radius: 999px; padding: 5px 12px; font-family: var(--mono); font-size: 12px; opacity: 0; animation: pop .35s forwards; }
+.rec { position: absolute; inset: 0; z-index: 10; background: rgba(8,18,31,.94); color: #e9eef4; display: grid; place-items: center; padding: 24px; }
+.rec[hidden] { display: none; }
+.rec-in { width: 100%; display: grid; gap: 14px; justify-items: center; text-align: center; }
+.rec-k { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #f2b14c; }
+.rec-worm { width: 100%; height: auto; }
+.rec-bar { width: 100%; height: 6px; border-radius: 3px; background: rgba(255,255,255,.15); overflow: hidden; }
+.rec-bar i { display: block; height: 100%; width: 0; background: #8fcf6a; }
+.rec-t { font-family: var(--display); font-size: 24px; }
+.rec-n { font-family: var(--mono); font-size: 13px; opacity: .85; }
+.rec-h { font-size: 13px; line-height: 1.5; opacity: .75; margin: 0; max-width: 30ch; }
+.postbox { display: grid; gap: 10px; position: relative; z-index: 3; }
+.postbox[hidden] { display: none; }
+.pb-k { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.pb-apps { display: flex; flex-wrap: wrap; gap: 8px; }
+.pb-app { display: inline-flex; align-items: center; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid currentColor; color: inherit; text-decoration: none; font-family: var(--mono); font-size: 12px; }
+.pb-app:hover, .pb-app:focus-visible { background: #f2b14c; border-color: #f2b14c; color: #1b1408; }
+.vkind { display: flex; gap: 6px; flex-wrap: wrap; position: relative; z-index: 3; }
+.vk { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font-family: var(--mono); font-size: 12px; cursor: pointer; opacity: .75; }
+.vk[aria-checked="true"] { background: #f2b14c; border-color: #f2b14c; color: #1b1408; opacity: 1; }
+.wr-thumb { width: 40%; max-width: 170px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.wr-chk { font-size: 13px; color: inherit; position: relative; z-index: 3; }
+.wr-share { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: relative; z-index: 3; }
+.wr-share[hidden] { display: none; }
+a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
+.wr-note { font-size: 12px; line-height: 1.5; margin: 0; opacity: .85; width: 100%; }
+.gatsby { display: flex; flex-wrap: wrap; gap: 6px; }
+.gatsby span { width: 22px; height: 32px; border-radius: 2px 4px 4px 2px; background: #2f6b52; box-shadow: inset 3px 0 0 rgba(0,0,0,.25); opacity: 0; animation: pop .35s forwards; }
+.gatsby { align-items: center; }
+.gatsby .gx { font-family: var(--display); font-weight: 400; font-size: 30px; margin-left: 6px; opacity: 0; animation: pop .35s forwards; }
+.gatsby span:nth-child(3n+2) { background: #b9553f; } .gatsby span:nth-child(3n) { background: #2b4a7a; }
+.gbars { display: grid; gap: 10px; margin-top: 6px; }
+.gbar { display: grid; grid-template-columns: 9.5em 1fr 1.5em; gap: 10px; align-items: center; font-size: 13px; }
+.gbar .gname { opacity: .85; }
+.gbar .gn { font-family: var(--mono); text-align: right; }
+.gtrack { height: 12px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+.gtrack i { display: block; height: 100%; width: 0; border-radius: 6px; background: currentColor; opacity: .55; animation: grow .8s cubic-bezier(.2,.8,.2,1) forwards; }
+.gbar.top .gtrack i { background: #f2b14c; opacity: 1; }
+.gbar.top .gname { opacity: 1; font-weight: 600; }
+@keyframes grow { to { width: var(--w); } }
+.wr-voy { width: 100%; height: auto; border-radius: 12px; background: #0b1522; }
+.wr-voy .country { fill: #22344a; stroke: #36506d; stroke-width: .4; }
+.wr-voy .country.visited { fill: #2f5a46; }
+.wr-voy .vroute { fill: none; stroke: #f2b14c; stroke-width: 1.2; stroke-dasharray: 1 4; opacity: .6; stroke-linecap: round; }
+.wr-voy .vtrail { fill: none; stroke: #8fcf6a; stroke-width: 2.2; stroke-dasharray: .5 4.5; stroke-linecap: round; }
+.wr-voy .vdot { fill: #0f1b2b; stroke: #f2b14c; stroke-width: 1.5; }
+.wr-voy .vdot.on { fill: #7fd1a8; stroke: #7fd1a8; }
+.bestcard { display: grid; gap: 10px; border: 2px solid currentColor; border-radius: 16px; padding: 22px; position: relative; }
+.bc-star { font-size: 44px; color: #b9553f; line-height: 1; animation: pop .5s .3s both; }
+.bc-t { font-size: clamp(30px, 9vw, 44px); }
+.bc-a { font-weight: 600; }
+.bc-c { font-family: var(--mono); font-size: 13px; opacity: .8; }
+.bc-b { font-size: 14px; }
+.pp { position: relative; width: min(100%, 320px, calc(58vh * 15 / 22)); aspect-ratio: 15 / 22; margin: 0 auto; perspective: 1400px; }
+.pp-nav { display: flex; justify-content: center; align-items: center; gap: 14px; font-family: var(--mono); font-size: 12px; position: relative; z-index: 3; }
+.pp-nav[hidden] { display: none; }
+.pp-arrow { width: 36px; height: 36px; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.pp-wm { font-family: var(--display); font-size: 9px; letter-spacing: .2em; fill: #d9cdb0; }
+@keyframes ppOut { to { transform: rotateX(80deg) translateY(-6%); opacity: .2; } }
+@keyframes ppIn { from { transform: rotateX(-80deg) translateY(6%); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes ppOutBack { to { transform: rotateX(-80deg) translateY(6%); opacity: .2; } }
+@keyframes ppInBack { from { transform: rotateX(80deg) translateY(-6%); opacity: .2; } to { transform: none; opacity: 1; } }
+.pp-page { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.pp-cover { position: absolute; inset: 0; transform-origin: left center; transition: transform 1.2s cubic-bezier(.6,.05,.3,1); backface-visibility: hidden; z-index: 2; filter: drop-shadow(0 10px 20px rgba(0,0,0,.5)); }
+.pp-cover svg { width: 100%; height: 100%; }
+.pp.open .pp-cover { transform: rotateY(-178deg); }
+.pp-gold { font-family: var(--display); fill: #d9b45a; }
+.pp-hd { font-family: var(--mono); font-size: 8px; letter-spacing: .14em; fill: #8a7c62; }
+.pp-mrz { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; fill: #4a4030; }
+.pp-st { font-family: var(--display); letter-spacing: .06em; }
+.pp-st.mono { font-family: var(--mono); letter-spacing: .08em; }
+.pp-st.it { font-family: var(--body); font-style: italic; letter-spacing: 0; }
+.wr-preview { font-family: var(--mono); font-size: 11px; opacity: .7; }
+
+@media (max-width: 420px) {
+  .stat b { font-size: 17px; }
+  ol.legs li { grid-template-columns: 28px 1fr; }
+  .li-dates { grid-column: 2; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .stamp, .wr-time .dot, .gatsby span, .gatsby .gx, .chips span { opacity: 1; } .gtrack i { width: var(--w); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Your 2026 · Books read</div>
+    <h1>Year-End Literary Voyage</h1>
+    <p class="sub">Every book you finish becomes a stop on the map. A little bookworm crawls from country to country and stops to read in each, because good books take time. When the trip ends, your year in books appears.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b id="s-books">0/7</b><span>books read</span><div class="bar"><i id="s-bar"></i></div></div>
+    <div class="stat"><b id="s-countries">0</b><span>countries visited</span></div>
+    <div class="stat"><b id="s-km">0</b><span>km crawled</span></div>
+  </div>
+
+  <div class="mapbox">
+    <svg id="map" viewBox="0 0 900 520" role="img" aria-label="Map of the reading route from Germany to the Philippines"></svg>
+    <div class="zoom">
+      <button id="zin" aria-label="Zoom in">+</button>
+      <button id="zout" aria-label="Zoom out">−</button>
+    </div>
+    <button class="play" id="play">▶ Play the voyage</button>
+    <div class="nowat" id="nowat">Germany</div>
+    <div class="hint">pinch or drag to explore</div>
+  </div>
+
+  <div class="sumrow">
+    <button class="sumbtn" id="sumbtn">See your 2026 in books →</button>
+    <button class="sumbtn alt" id="voybtn">🐛 Post my bookworm voyage</button>
+  </div>
+
+  <section class="addbox" id="addbox">
+    <div class="add-head">
+      <h3 style="margin:0">Add a book you've read</h3>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-pane="type" aria-selected="true">Type</button>
+        <button class="tab" role="tab" data-pane="scan" aria-selected="false">Scan</button>
+        <button class="tab" role="tab" data-pane="paste" aria-selected="false">Paste list</button>
+        <button class="tab" role="tab" data-pane="import" aria-selected="false">Import</button>
+      </div>
+    </div>
+    <div class="pane" id="pane-type">
+      <form id="f-type" class="qrow">
+        <label for="q" class="sr">Book title</label>
+        <input id="q" type="text" placeholder="Type a title, e.g. Things Fall Apart" autocomplete="off">
+        <button type="submit" class="go">Find</button>
+      </form>
+      <p class="hint2">Type the title (add the author if it's a common title). The author, country, genre and pages are filled in for you from Open Library and Wikidata.</p>
+    </div>
+    <div class="pane" id="pane-scan" hidden>
+      <label class="filebtn" for="f-scan">📷 Take or choose a photo</label>
+      <input type="file" id="f-scan" accept="image/*" capture="environment" class="sr">
+      <p class="hint2">Snap the barcode on the back of the book. The ISBN finds the exact edition.</p>
+    </div>
+    <div class="pane" id="pane-paste" hidden>
+      <form id="f-paste" class="pastef">
+        <label for="pastebox" class="sr">Your books, one per line</label>
+        <textarea id="pastebox" rows="7" placeholder="One book per line, as many as you like:&#10;Crime and Punishment&#10;The Double — Dostoevsky&#10;Norwegian Wood by Haruki Murakami&#10;1. Noli Me Tángere"></textarea>
+        <button type="submit" class="go">Find all</button>
+      </form>
+      <p class="hint2">Paste your whole list from Notes, a spreadsheet or anywhere else. Numbers, bullets and "by Author" are fine. You'll see every match before anything is added.</p>
+    </div>
+    <div class="pane" id="pane-import" hidden>
+      <label class="filebtn" for="f-csv">⇪ Choose your export file (.csv)</label>
+      <input type="file" id="f-csv" accept=".csv,text/csv" class="sr">
+      <p class="hint2">From Goodreads: My Books → Import and export → Export library. StoryGraph also lets you export your library from your account settings. Every book you marked as read is included, however many there are.</p>
+      <label class="chk"><input type="checkbox" id="only2026"> Only books I finished in 2026</label>
+    </div>
+    <div id="add-status" class="add-status" aria-live="polite"></div>
+    <div id="add-results" class="add-results"></div>
+  </section>
+
+  <section class="detail" id="detail" aria-live="polite"></section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <h3>The route</h3>
+  <ol class="legs" id="legs"></ol>
+  <p class="note">Only books you've read are on the map. Your books are saved on this device.</p>
+</div>
+
+<div class="wr" id="wr" role="dialog" aria-modal="true" aria-label="Your 2026 in books">
+  <div class="wr-card" id="wr-card">
+    <div class="wr-bars" id="wr-bars"></div>
+    <div class="wr-top"><span>2026 · Literary Voyage</span><span class="wr-tr"><button class="wr-snd" id="wr-snd" aria-pressed="false" aria-label="Turn music on">♪ Off</button><button class="wr-x" id="wr-x" aria-label="Close summary">✕</button></span></div>
+    <div class="wr-tapl" id="wr-prev" aria-hidden="true"></div>
+    <div class="wr-tapr" id="wr-next" aria-hidden="true"></div>
+    <div class="wr-body" id="wr-body"></div>
+    <div class="rec" id="rec" hidden role="status" aria-live="polite">
+      <div class="rec-in">
+        <div class="rec-k">Making your video</div>
+        <svg class="rec-worm" id="rec-worm" viewBox="0 0 340 90" aria-hidden="true"></svg>
+        <div class="rec-bar"><i id="rec-fill"></i></div>
+        <div class="rec-t" id="rec-t">Your bookworm is crawling…</div>
+        <div class="rec-n" id="rec-n">0% · about 60 seconds left</div>
+        <p class="rec-h">Keep this screen open. The video is recorded as it plays, so it takes as long as the video itself.</p>
+        <button class="wr-btn" id="rec-x">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
+<script>
+const STOPS = [];
+const GENRES = {
+  "The Gambler": "Psychological fiction", "White Nights": "Romance", "Heart of a Dog": "Satire",
+  "A Hero of Our Time": "Psychological fiction", "Snow Country": "Literary fiction",
+  "The Sorrow of War": "War fiction", "Noli Me Tángere": "Historical fiction"
+};
+const WORDS_PER_PAGE = 275;  // rough average for a printed novel page
+STOPS.forEach(s => { s.genre = GENRES[s.title] || "Fiction"; s.words = Math.round(s.pages * WORDS_PER_PAGE / 1000) * 1000; });
+
+// books the reader added (kept in this browser for the prototype)
+const ADDED_KEY = "litvoyage-added-v1";
+function insertAt() { return STOPS.map(s => s.done).lastIndexOf(true) + 1; }
+function loadAdded() {
+  try { (JSON.parse(localStorage.getItem(ADDED_KEY) || "[]") || []).forEach((b, i) => { if (!b.id) b.id = (b.title + "-" + b.author).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120); if (!b.order) b.order = i + 1; STOPS.splice(insertAt(), 0, b); }); } catch (e) {}
+}
+const BEST_KEY = "litvoyage-best-v1";
+let bestKey = (() => { try { return localStorage.getItem(BEST_KEY) || ""; } catch (e) { return ""; } })();
+function setBest(title) {
+  bestKey = title ? title.toLowerCase() : "";
+  try { localStorage.setItem(BEST_KEY, bestKey); } catch (e) {}
+  if (typeof BOOKS_COL !== "undefined" && BOOKS_COL) BOOKS_COL.doc("_meta").set({ best: bestKey }).catch(() => {});
+}
+function saveAdded() { try { localStorage.setItem(ADDED_KEY, JSON.stringify(STOPS.filter(s => s.added))); } catch (e) {} }
+loadAdded();
+
+let active = STOPS.findIndex(s => !s.done);
+if (active < 0) active = STOPS.length - 1;
+
+const W = 900, H = 520, R = 6371;
+const svg = d3.select("#map");
+const g = svg.append("g");
+function fitShape() {
+  // pad around each stop so one or two books still give a sensible view
+  const c = [];
+  if (!STOPS.length) return { type: "MultiPoint", coordinates: [[-150, -50], [160, 70]] };
+  STOPS.forEach(s => { c.push([s.lon, s.lat], [s.lon - 14, s.lat - 9], [s.lon + 14, s.lat + 9]); });
+  return { type: "MultiPoint", coordinates: c };
+}
+const projection = d3.geoMercator().fitExtent([[60, 50], [W - 60, H - 40]], fitShape());
+const path = d3.geoPath(projection);
+const gratPath = g.append("path").attr("class", "graticule").attr("d", path(d3.geoGraticule().step([10, 10])()));
+const landG = g.append("g"), legG = g.append("g"), trailG = g.append("g"), labelG = g.append("g"), stopG = g.append("g"), travG = g.append("g");
+let WORLD = null;
+const reached = new Set();  // countries the worm has reached during play
+
+// ---- the bookworm ----
+const WORMS = [];
+class Worm {
+  constructor(parent, opts = {}) {
+    this.n = opts.n || 10; this.size = opts.size || 1; this.scale = opts.scale || (() => 1);
+    this.g = parent.append("g").attr("class", "worm");
+    this.hist = []; this.crawl = 0; this.isReading = false;
+    this.segs = this.g.selectAll("circle.seg").data(d3.range(this.n).reverse()).join("circle").attr("class", i => "seg" + (i % 2 ? " alt" : ""));
+    const h = this.head = this.g.append("g").attr("class", "whead");
+    h.append("circle").attr("class", "hd").attr("r", 6.2);
+    [-4.3, 4.3].forEach(y => h.append("circle").attr("class", "cheek").attr("cx", 0.8).attr("cy", y).attr("r", 1.3));
+    [-2.3, 2.3].forEach(y => {
+      h.append("circle").attr("class", "eye").attr("cx", 2.6).attr("cy", y).attr("r", 1.6);
+      h.append("circle").attr("class", "pupil").attr("cx", 3.3).attr("cy", y).attr("r", .8);
+      h.append("circle").attr("class", "gl").attr("cx", 2.6).attr("cy", y).attr("r", 2.2);
+    });
+    const b = this.book = this.g.append("g").attr("class", "wbook").style("display", "none");
+    b.append("rect").attr("class", "cover").attr("x", -6.6).attr("y", -4.6).attr("width", 13.2).attr("height", 9.2).attr("rx", 1);
+    [-5.8, 0.2].forEach(x => b.append("rect").attr("class", "page").attr("x", x).attr("y", -3.8).attr("width", 5.6).attr("height", 7.6));
+    for (let j = 0; j < 3; j++) [[-5, -1], [1, 5]].forEach(([x1, x2]) => b.append("line").attr("class", "txt").attr("x1", x1).attr("x2", x2).attr("y1", -2 + j * 2).attr("y2", -2 + j * 2));
+    b.append("rect").attr("class", "page flip").attr("x", 0.2).attr("y", -3.8).attr("width", 5.6).attr("height", 7.6);
+  }
+  s() { return this.size * this.scale(); }
+  placeAt(p, toward) {
+    let dx = -1, dy = 0;
+    if (toward) { const L = Math.hypot(toward[0] - p[0], toward[1] - p[1]) || 1; dx = (p[0] - toward[0]) / L; dy = (p[1] - toward[1]) / L; }
+    const s = this.s(), len = this.n * 6 * s + 20 * s;
+    this.hist = [];
+    for (let d = len; d > 0; d -= 1.5 * s) this.hist.push([p[0] + dx * d, p[1] + dy * d]);
+    this.hist.push([p[0], p[1]]);
+    this.draw();
+  }
+  moveTo(p) {
+    const Hh = this.hist, last = Hh[Hh.length - 1], s = this.s();
+    const d = Math.hypot(p[0] - last[0], p[1] - last[1]);
+    if (d < 0.4 * s) return;
+    Hh.push([p[0], p[1]]); this.crawl += d / s;
+    const need = this.n * 6 * s * 1.6 + 40 * s;
+    let acc = 0;
+    for (let i = Hh.length - 1; i > 0; i--) { acc += Math.hypot(Hh[i][0] - Hh[i - 1][0], Hh[i][1] - Hh[i - 1][1]); if (acc > need) { Hh.splice(0, i - 1); break; } }
+    this.draw();
+  }
+  at(d) {
+    const Hh = this.hist; let acc = 0;
+    for (let i = Hh.length - 1; i > 0; i--) {
+      const a = Hh[i], b = Hh[i - 1], L = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (L > 0 && acc + L >= d) { const f = (d - acc) / L; return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, tx: (a[0] - b[0]) / L, ty: (a[1] - b[1]) / L }; }
+      acc += L;
+    }
+    return { x: Hh[0][0], y: Hh[0][1], tx: 1, ty: 0 };
+  }
+  reading(on) { this.isReading = on; this.book.style("display", on ? null : "none"); this.draw(); }
+  draw(t = performance.now()) {
+    if (this.hist.length < 2 || !this.g.node().isConnected) return;
+    const s = this.s(), sp = 5.2 * s, P = [];
+    for (let i = 0; i <= this.n; i++) {
+      const q = this.at(i * sp);
+      const wav = Math.sin(this.crawl * 0.45 - i * 0.9) * 1.6 * s * (i === 0 ? 0.4 : 1);
+      const breath = 1 + 0.07 * Math.sin(t / 380 - i * 0.7);
+      P.push({ x: q.x - q.ty * wav, y: q.y + q.tx * wav, tx: q.tx, ty: q.ty, r: 5 * s * (1 - i / (this.n + 2) * 0.5) * breath });
+    }
+    this.segs.attr("cx", i => P[i + 1].x).attr("cy", i => P[i + 1].y).attr("r", i => P[i + 1].r);
+    const h = P[0], ang = Math.atan2(h.ty, h.tx) * 180 / Math.PI;
+    this.head.attr("transform", `translate(${h.x},${h.y}) rotate(${ang}) scale(${s})`);
+    if (this.isReading) this.book.attr("transform", `translate(${h.x},${h.y - 15 * s}) scale(${s * 1.15})`);
+  }
+}
+let k = 1;
+const worm = new Worm(travG, { scale: () => 1 / k });
+WORMS.push(worm);
+
+const zoom = d3.zoom().scaleExtent([1, 6]).translateExtent([[-200, -200], [W + 200, H + 200]])
+  .on("zoom", (e) => { k = e.transform.k; g.attr("transform", e.transform); sizeStops(); });
+svg.call(zoom);
+document.getElementById("zin").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
+document.getElementById("zout").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6);
+
+fetch("countries-110m.json").then(r => r.json()).then(world => {
+  WORLD = topojson.feature(world, world.objects.countries).features;
+  landG.selectAll("path").data(WORLD).join("path").attr("d", path);
+  paintCountries();
+}).catch(() => {});
+
+function isVisited(iso) { return reached.has(iso) || STOPS.some(s => s.iso === iso && s.done); }
+function paintCountries() {
+  const planned = new Set(STOPS.map(s => s.iso));
+  landG.selectAll("path").attr("class", d => "country" + (isVisited(d.id) ? " visited" : planned.has(d.id) ? " plan" : ""));
+}
+
+function legKm(i) { const a = STOPS[i - 1], b = STOPS[i]; return d3.geoDistance([a.lon, a.lat], [b.lon, b.lat]) * R; }
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 4200);
+}
+
+function render() {
+  const legs = STOPS.slice(1).map((s, j) => ({ i: j + 1, done: s.done && STOPS[j].done }));
+  legG.selectAll("path").data(legs).join("path")
+    .attr("class", d => "leg " + (d.done ? "done" : "todo"))
+    .attr("d", d => path({ type: "LineString", coordinates: [[STOPS[d.i - 1].lon, STOPS[d.i - 1].lat], [STOPS[d.i].lon, STOPS[d.i].lat]] }));
+
+  // one label per country, at its first stop
+  const firsts = STOPS.filter((s, i) => STOPS.findIndex(t => t.country === s.country) === i);
+  labelG.selectAll("text").data(firsts).join("text").attr("class", "clabel")
+    .text(s => { const n = STOPS.filter(t => t.country === s.country).length; return s.country + (n > 1 ? " ×" + n : ""); })
+    .attr("text-anchor", s => (s.lab || [14, 4, "start"])[2]);
+
+  const sel = stopG.selectAll("g.stop").data(STOPS).join(enter => {
+    const e = enter.append("g").attr("tabindex", 0).attr("role", "button");
+    e.append("circle").attr("class", "ring");
+    e.append("circle").attr("class", "dot");
+    e.append("text").attr("class", "n");
+    return e;
+  });
+  sel.attr("class", (d, i) => "stop " + (d.done ? "done" : "todo") + (i === active ? " active" : ""))
+    .attr("aria-label", d => d.country + ": " + d.title)
+    .attr("transform", d => { const p = projection([d.lon, d.lat]); return `translate(${p[0]},${p[1]})`; })
+    .on("click", (e, d) => select(STOPS.indexOf(d)))
+    .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(STOPS.indexOf(d)); } });
+  sel.select("text.n").text((d, i) => d.done ? "✓" : i + 1);
+  sizeStops();
+  paintCountries();
+
+  const read = STOPS.filter(s => s.done);
+  let km = 0;
+  for (let i = 1; i < STOPS.length; i++) if (STOPS[i].done && STOPS[i - 1].done) km += legKm(i);
+  document.getElementById("s-books").textContent = read.length;
+  document.getElementById("s-countries").textContent = new Set(read.map(s => s.country)).size;
+  document.getElementById("s-km").textContent = Math.round(km).toLocaleString("en-US");
+  document.getElementById("s-bar").style.width = (read.length / STOPS.length * 100) + "%";
+
+  const nextIdx = STOPS.findIndex(s => !s.done);
+  d3.select("#legs").selectAll("li").data(STOPS).join("li")
+    .attr("tabindex", 0)
+    .attr("class", (d, i) => (d.done ? "done" : "") + (i === active ? " active" : ""))
+    .html((d, i) => `<span class="num">${d.done ? "✓" : i + 1}</span>
+      <div><div class="li-title">${bestKey === d.title.toLowerCase() ? "★ " : ""}${d.title}</div><div class="li-sub">${d.author} · ${d.country}</div></div>
+      <div class="li-dates">${d.dates}${i === nextIdx ? " · next" : ""}</div>`)
+    .on("click", (e, d) => select(STOPS.indexOf(d)))
+    .on("keydown", (e, d) => { if (e.key === "Enter") select(STOPS.indexOf(d)); });
+
+  const d = STOPS[active];
+  if (!d) {
+    document.getElementById("detail").className = "detail";
+    document.getElementById("detail").innerHTML = `<div class="place">Welcome</div><h2>Where have your books taken you this year?</h2><p>Add the books you've read: type a title, scan a barcode, paste a list, or import your Goodreads or StoryGraph library. Each book becomes a stamp, and a little bookworm crawls from country to country.</p>`;
+    return;
+  }
+  const km2 = active > 0 ? Math.round(legKm(active)).toLocaleString("en-US") + " km from the last stop" : "Starting point";
+  const det = document.getElementById("detail");
+  det.className = "detail" + (d.done ? " isdone" : "");
+  det.innerHTML = `
+    <div class="place">Stop ${active + 1} · ${d.country}</div>
+    <h2>${d.title}</h2>
+    <div class="by">${d.author}, ${d.year} · ${d.basis === "author" ? "imaginary setting, stamped where the author lived (" + d.city + ")" : "set in " + d.city}</div>
+    <p>${d.blurb}</p>
+    <div class="meta">
+      <span class="pill ${d.done ? "ok" : (active === nextIdx ? "next" : "")}">${d.done ? "Read" : (active === nextIdx ? "Up next" : "Ahead")}</span>
+      <span class="pill">${d.dates}</span>
+      <span class="pill">${d.genre}</span>
+      <span class="pill">~${d.pages} pages · ~${(d.words / 1000).toFixed(0)}k words</span>
+      <span class="pill">${km2}</span>
+    </div>
+    <div class="dbtns">
+      <button class="bestbtn${bestKey === d.title.toLowerCase() ? " on" : ""}" id="bestbtn">${bestKey === d.title.toLowerCase() ? "★ My best book of 2026" : "☆ Make this my best book of 2026"}</button>
+      ${d.added ? `<button class="zoomcity" id="rmbook">Remove from my map</button>` : ""}
+    </div>`;
+  document.getElementById("bestbtn").onclick = () => {
+    const was = bestKey === d.title.toLowerCase();
+    setBest(was ? "" : d.title); render();
+    toast(was ? "Best book cleared." : "★ " + d.title + " is your best book of 2026.");
+  };
+  const rb = document.getElementById("rmbook");
+  if (rb) rb.onclick = () => { const gone = STOPS.splice(active, 1)[0]; persistRemove(gone); active = Math.max(0, active - 1); refit(); placeTraveler(Math.max(0, STOPS.map(s => s.done).lastIndexOf(true))); };
+}
+
+function sizeStops() {
+  stopG.selectAll("g.stop").each(function () {
+    const s = d3.select(this);
+    s.select("circle.dot").attr("r", 9 / k);
+    s.select("circle.ring").attr("r", 13 / k);
+    s.select("text.n").attr("font-size", 10 / k);
+  });
+  labelG.selectAll("text").each(function (s) {
+    const p = projection([s.lon, s.lat]);
+    const lb = s.lab || [14, 4, "start"];
+    d3.select(this).attr("x", p[0] + lb[0] / k).attr("y", p[1] + lb[1] / k).attr("font-size", 15 / k);
+  });
+  worm.draw();
+}
+
+// ---- the moving voyage ----
+const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const playBtn = document.getElementById("play");
+const nowat = document.getElementById("nowat");
+let playing = false, runId = 0;
+function speed() { return STOPS.length > 12 ? Math.max(0.15, 12 / STOPS.length) : 1; }
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+function placeTraveler(i) {
+  if (!STOPS[i]) { nowat.textContent = "Add your first book"; return; }
+  const p = projection([STOPS[i].lon, STOPS[i].lat]);
+  const nx = STOPS[i + 1] ? projection([STOPS[i + 1].lon, STOPS[i + 1].lat]) : null;
+  worm.placeAt(p, nx);
+  nowat.textContent = (i + 1) + " · " + STOPS[i].country;
+}
+async function readPause(i, id) {
+  const st = STOPS[i];
+  nowat.textContent = "reading " + st.title + " · " + st.pages + " pages";
+  worm.reading(true);
+  await wait(reduce ? 1200 : Math.max(700, 3000 * speed()));
+  worm.reading(false);
+  if (id === runId) nowat.textContent = (i + 1) + " · " + st.country;
+}
+function flyLeg(i, id) {
+  return new Promise(resolve => {
+    const a = STOPS[i - 1], b = STOPS[i];
+    const interp = d3.geoInterpolate([a.lon, a.lat], [b.lon, b.lat]);
+    const trail = trailG.append("path").attr("class", "trail");
+    const coords = [[a.lon, a.lat]];
+    const dur = Math.max(500, Math.min(7000, 2800 + legKm(i) * 0.7) * speed());
+    nowat.textContent = a.country === b.country ? "crawling on through " + b.country + "…" : "crawling to " + b.country + "…";
+    const t = d3.timer(el => {
+      if (id !== runId) { t.stop(); trail.remove(); return resolve(false); }
+      const f = Math.min(1, el / dur), c = interp(d3.easeSinInOut(f));
+      coords.push(c);
+      trail.attr("d", path({ type: "LineString", coordinates: coords }));
+      worm.moveTo(projection(c));
+      if (f >= 1) { t.stop(); resolve(true); }
+    });
+  });
+}
+async function playVoyage() {
+  if (STOPS.length < 2) { if (STOPS.length) placeTraveler(0); return; }
+  const id = ++runId; playing = true;
+  playBtn.textContent = "■ Stop";
+  trailG.selectAll("*").remove();
+  reached.clear(); reached.add(STOPS[0].iso); paintCountries();
+  placeTraveler(0); select(0);
+  await readPause(0, id);
+  for (let i = 1; i < STOPS.length; i++) {
+    if (id !== runId) return;
+    const ok = await flyLeg(i, id);
+    if (!ok) return;
+    reached.add(STOPS[i].iso); paintCountries();
+    select(i);
+    await readPause(i, id);
+  }
+  if (id === runId) { stopVoyage(true); await wait(900); openSummary(); }
+}
+function stopVoyage(finished) {
+  runId++; playing = false;
+  playBtn.textContent = finished ? "↺ Play again" : "▶ Play the voyage";
+  if (!finished) { reached.clear(); paintCountries(); }
+  const here = Math.max(0, STOPS.map(s => s.done).lastIndexOf(true));
+  placeTraveler(here);
+  if (!finished) select(here);
+}
+playBtn.onclick = () => playing ? stopVoyage(false) : playVoyage();
+function select(i) { active = i; render(); }
+
+// ---- year summary ----
+// The sample has one finished book, so the summary previews the full route as if every book were read.
+const NEXT = [
+  { t: "Things Fall Apart", a: "Chinua Achebe", c: "Nigeria", cont: "Africa" },
+  { t: "Pedro Páramo", a: "Juan Rulfo", c: "Mexico", cont: "the Americas" }
+];
+function readerType(S) {
+  const n = S.J.length, nc = S.countries.length, avgP = Math.round(S.pages / n);
+  const top = S.byCountry[0], share = top[1] / n, span = S.newest.year - S.oldest.year;
+  const years = S.J.map(s => s.year).sort((a, b) => a - b), medianYear = years[Math.floor(years.length / 2)];
+  const tg = S.byGenre[0], ta = S.byAuthor[0];
+  let t;
+  if (n >= 2 && share >= .5 && top[1] >= 2)
+    t = top[0] === "Russia"
+      ? { key: "home", name: "The Russian Soul", line: `You kept going back to Russia: ${top[1]} of your ${n} books. Long winters, big questions, and you wouldn't have it any other way.` }
+      : { key: "home", name: "The Devoted Expat", line: `${top[0]} kept pulling you back: ${top[1]} of your ${n} books. You don't just visit a place, you move in.` };
+  else if (nc >= 4 && nc / n >= .75) t = { key: "stamps", name: "The Globetrotter", line: `Almost every book took you somewhere new: ${nc} countries from ${n} books.` };
+  else if (S.conts.length >= 3) t = { key: "conts", name: "The Explorer", line: `Your reading crossed ${S.conts.length} continents this year.` };
+  else if (avgP >= 380) t = { key: "big", name: "The Deep Diver", line: `You pick the big ones, about ${avgP} pages a book, and you stay till the end.` };
+  else if (avgP <= 170) t = { key: "short", name: "The Novella Nibbler", line: `Short, sharp and finished: about ${avgP} pages a book. Every page counts.` };
+  else if (span >= 100) t = { key: "time", name: "The Time Traveller", line: `Your books span ${span} years, from ${S.oldest.year} to ${S.newest.year}.` };
+  else t = { key: "wander", name: "The Curious Wanderer", line: `You follow your nose from book to book, and it's taking you interesting places.` };
+  const traits = [];
+  if (medianYear < 1950) traits.push("Classics lover");
+  if (n >= 2 && ta[1] >= 2) traits.push(ta[0].split(" ").slice(-1)[0] + " devotee");
+  if (n >= 2 && tg[1].n / n >= .5) traits.push(tg[0] + " loyalist");
+  if (span >= 100 && t.key !== "time") traits.push("Time traveller");
+  if (S.km >= 10000) traits.push("Long-haul crawler");
+  if (nc >= 4 && t.key !== "stamps") traits.push("Stamp collector");
+  if (avgP >= 380 && t.key !== "big") traits.push("Big-book reader");
+  if (avgP <= 170 && t.key !== "short") traits.push("Short-book sprinter");
+  t.traits = traits.slice(0, 3);
+  return t;
+}
+function nextPicks(S) {
+  const has = c => S.J.some(s => (c === "the Americas" ? /America/.test(s.continent) : s.continent === c));
+  return NEXT.filter(n => !has(n.cont));
+}
+function yearStats() {
+  const hasAdded = STOPS.some(s => s.added);
+  const J = hasAdded ? STOPS.filter(s => s.done) : STOPS;  // until the reader adds books, preview the whole route
+  const countries = [...new Set(J.map(s => s.country))];
+  const pages = d3.sum(J, s => s.pages);
+  let km = 0; for (let i = 1; i < J.length; i++) km += d3.geoDistance([J[i - 1].lon, J[i - 1].lat], [J[i].lon, J[i].lat]) * R;
+  const byCountry = d3.rollups(J, v => v.length, s => s.country).sort((a, b) => b[1] - a[1]);
+  const byAuthor = d3.rollups(J, v => v.length, s => s.author).sort((a, b) => b[1] - a[1]);
+  const conts = [...new Set(J.map(s => s.continent))];
+  const oldest = d3.least(J, s => s.year), newest = d3.greatest(J, s => s.year);
+  const longest = d3.greatest(J, s => s.pages);
+  const words = d3.sum(J, s => s.words);
+  const byGenre = d3.rollups(J, v => ({ n: v.length, p: d3.sum(v, s => s.pages), books: v.map(s => s.title) }), s => s.genre)
+    .sort((a, b) => b[1].n - a[1].n || b[1].p - a[1].p);
+  const S = { J, countries, pages, km, words, byGenre, hours: Math.round(pages / 40), byCountry, byAuthor, conts, oldest, newest, longest, preview: !hasAdded && !STOPS.every(s => s.done) };
+  S.type = readerType(S);
+  S.badges = [];
+  S.best = J.find(b => bestKey && b.title.toLowerCase() === bestKey) || null;
+  return S;
+}
+
+const wr = document.getElementById("wr"), wrCard = document.getElementById("wr-card"), wrBody = document.getElementById("wr-body"), wrBars = document.getElementById("wr-bars");
+let slide = 0, slideTimer = null, slideStart = 0, SLIDES = [], miniWorm = null;
+const SLIDE_MS = 6500;
+
+function fitBig(el, finalText) {
+  // shrink the big number until its final value fits the card
+  el.style.fontSize = "";
+  el.textContent = finalText;
+  const cs = getComputedStyle(el.parentElement);
+  const max = el.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  let fs = parseFloat(getComputedStyle(el).fontSize);
+  while (el.offsetWidth > max && fs > 24) { fs -= 2; el.style.fontSize = fs + "px"; }
+  el.textContent = "0";
+}
+function countUp(el, to, ms = 1400, fmt = v => Math.round(v).toLocaleString("en-US")) {
+  if (reduce) { el.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const step = now => { const f = Math.min(1, (now - t0) / ms); el.textContent = fmt(to * d3.easeCubicOut(f)); if (f < 1 && el.isConnected) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+function buildSlides(S) {
+  const pv = S.preview ? `<div class="wr-preview">Preview · as if you finish the route</div>` : "";
+  return [
+    { bg: "#12382b", fg: "#e8f5dc", html: `${pv}
+        <div class="wr-k">This year you read your way through</div>
+        <div class="wr-big" data-count="${S.countries.length}">0</div>
+        <h2 class="wr-h">countries</h2>
+        <svg class="wr-map" id="wr-map" viewBox="0 0 360 190"></svg>
+        <p class="wr-p">${S.countries.join(", ")}.</p>` ,
+      after: () => drawMiniMap(S) },
+    { bg: "#f2b14c", fg: "#1b1408", html: `
+        <div class="wr-k">You turned</div>
+        <div class="wr-big" data-count="${S.pages}">0</div>
+        <h2 class="wr-h">pages across ${S.J.length} books</h2>
+        <p class="wr-p">That's about <b>${S.hours} hours</b> of reading, at a gentle 40 pages an hour. ${S.hours} hours spent inside other people's lives.</p>` },
+    { bg: "#f4ead5", fg: "#2a2018", html: `
+        <div class="wr-k">Word by word, you read about</div>
+        <div class="wr-big" data-count="${S.words}">0</div>
+        <h2 class="wr-h">words</h2>
+        <div class="gatsby">${(() => { const g = Math.max(1, Math.round(S.words / 47000)), shown = Math.min(g, 10);
+          return d3.range(shown).map(i => `<span style="animation-delay:${.5 + i * .12}s"></span>`).join("") + (g > shown ? `<b class="gx" style="animation-delay:${.5 + shown * .12}s">×${g}</b>` : ""); })()}</div>
+        <p class="wr-p">That's about <b>${Math.round(S.words / 47000)} copies</b> of <i>The Great Gatsby</i>, back to back. (Estimated at ${WORDS_PER_PAGE} words a page.)</p>` },
+    { bg: "#0f1b2b", fg: "#e9eef4", html: `
+        <div class="wr-k">Your bookworm crawled</div>
+        <div class="wr-big" data-count="${Math.round(S.km)}">0</div>
+        <h2 class="wr-h">kilometres</h2>
+        <svg class="wr-worm" id="wr-worm" viewBox="0 0 360 90"></svg>
+        <p class="wr-p">${S.km >= 40075 ? `That's ${(S.km / 40075).toFixed(1)} times around the Earth` : `That's ${Math.round(S.km / 40075 * 100)}% of the way around the Earth`}, one page at a time.</p>`,
+      after: () => crawlMini() },
+    { bg: "#b9553f", fg: "#fbefe4", html: `
+        <div class="wr-k">You also travelled through time</div>
+        <div class="wr-big" data-count="${S.newest.year - S.oldest.year}">0</div>
+        <h2 class="wr-h">years of literature</h2>
+        <div class="wr-time">${timelineHTML(S)}</div>
+        <p class="wr-p">From ${S.oldest.author}'s <i>${S.oldest.title}</i> (${S.oldest.year}) to ${S.newest.author}'s <i>${S.newest.title}</i> (${S.newest.year}).</p>` },
+    { bg: "#2b2140", fg: "#efe7ff", html: `
+        <div class="wr-k">Your favourite genre</div>
+        <h2 class="wr-h" style="font-size:clamp(30px,9vw,42px)">${S.byGenre[0][0]}</h2>
+        <p class="wr-p">${S.byGenre[0][1].n} ${S.byGenre[0][1].n > 1 ? "books" : "book"}: ${S.byGenre[0][1].books.map(t => `<i>${t}</i>`).join(" and ")}.</p>
+        <div class="gbars">${S.byGenre.map((gx, i) => `
+          <div class="gbar${i === 0 ? " top" : ""}"><span class="gname">${gx[0]}</span>
+            <span class="gtrack"><i style="--w:${gx[1].n / S.byGenre[0][1].n * 100}%; animation-delay:${.4 + i * .15}s"></i></span>
+            <span class="gn">${gx[1].n}</span></div>`).join("")}</div>` },
+    { bg: "#1d2f4a", fg: "#e9eef4", html: `
+        <div class="wr-k">Your favourite places</div>
+        <div class="wr-row">
+          <div class="wr-mini"><b>${S.byCountry[0][0]}</b><span>most-visited country · ${S.byCountry[0][1]} books</span></div>
+          <div class="wr-mini"><b>${S.byAuthor[0][0]}</b><span>most-read author · ${S.byAuthor[0][1]} books</span></div>
+          <div class="wr-mini"><b><i>${S.longest.title}</i></b><span>longest book · ${S.longest.pages} pages</span></div>
+        </div>` },
+    { bg: "#3a2433", fg: "#fbe9f0", ms: 8000, html: `
+        <div class="wr-k">Your reader type</div>
+        <svg class="wr-worm" id="wr-rt" viewBox="0 0 360 110" aria-hidden="true"></svg>
+        <h2 class="wr-h rt-name">${S.type.name}</h2>
+        <p class="wr-p">${S.type.line}</p>
+        ${S.type.traits.length ? `<div class="chips">${S.type.traits.map((t, i) => `<span style="animation-delay:${.6 + i * .2}s">${t}</span>`).join("")}</div>` : ""}`,
+      after: () => {
+        const m = d3.select("#wr-rt");
+        if (window._rtWorm) WORMS.splice(WORMS.indexOf(window._rtWorm), 1);
+        const w = window._rtWorm = new Worm(m.append("g"), { size: 3 });
+        WORMS.push(w); w.placeAt([210, 78], [340, 78]); w.reading(true);
+      } },
+    ...(S.best ? [{ bg: "#f4ead5", fg: "#2a2018", html: `
+        <div class="wr-k">Your best book of 2026</div>
+        <div class="bestcard">
+          <div class="bc-star">★</div>
+          <h2 class="wr-h bc-t">${S.best.title}</h2>
+          <p class="wr-p bc-a">${S.best.author}, ${S.best.year}</p>
+          <p class="wr-p bc-c">${S.best.basis === "author" ? "Stamped in " + S.best.country : "Set in " + S.best.city.replace(/ \(.*\)/, "") + ", " + S.best.country}</p>
+          ${S.best.blurb ? `<p class="wr-p bc-b">${S.best.blurb}</p>` : ""}
+        </div>` }] : []),
+    { bg: "#1c1412", fg: "#f4ead5", ms: Math.min(26000, 4500 + Math.min(520, 9000 / Math.max(1, S.countries.length + S.badges.length)) * (S.countries.length + S.badges.length) + 2500), html: `
+        <div class="wr-k">Your passport</div>
+        <div class="pp" id="pp">
+          <svg class="pp-page" id="pp-page" viewBox="0 0 300 440" aria-label="Passport spread with ${S.countries.length} entry stamps"></svg>
+          <div class="pp-cover">
+            <svg viewBox="0 0 300 440" aria-hidden="true">
+              <rect x="0" y="0" width="300" height="440" rx="10" fill="#5a1a22"/>
+              <rect x="10" y="10" width="280" height="420" rx="6" fill="none" stroke="#d9b45a" stroke-opacity=".35"/>
+              <text x="150" y="80" text-anchor="middle" class="pp-gold" font-size="13" letter-spacing="3">REPUBLIC OF READERS</text>
+              <g transform="translate(150,200)" fill="none" stroke="#d9b45a" stroke-width="2">
+                <circle r="48"/><ellipse rx="20" ry="48"/><line x1="-48" x2="48"/><path d="M-42,-24 Q0,-14 42,-24 M-42,24 Q0,14 42,24"/>
+                <path d="M-62,62 Q-31,48 0,62 Q31,48 62,62 L62,74 Q31,60 0,74 Q-31,60 -62,74 Z" fill="#5a1a22"/>
+              </g>
+              <text x="150" y="330" text-anchor="middle" class="pp-gold" font-size="26" letter-spacing="4">LITERARY</text>
+              <text x="150" y="363" text-anchor="middle" class="pp-gold" font-size="26" letter-spacing="4">PASSPORT</text>
+              <text x="150" y="395" text-anchor="middle" class="pp-gold" font-size="11" letter-spacing="3">2026</text>
+            </svg>
+          </div>
+        </div>
+        <p class="wr-p" style="text-align:center; max-width:none">${S.countries.length} entry stamps${S.badges.length ? ` · ${S.badges.length} challenge ${S.badges.length > 1 ? "badges" : "badge"}` : ""} · ${S.J.length} books</p>`,
+      after: () => drawPassport(S) },
+    { bg: "#12382b", fg: "#e8f5dc", html: `
+        <div class="wr-k">Your next stamp</div>
+        <h2 class="wr-h">${nextPicks(S).length ? "No stamps yet in " + nextPicks(S).map(n => n.cont).join(" or ") + "." : "Stamps on every continent we track. Where next?"}</h2>
+        <p class="wr-p">${nextPicks(S).length ? "Start 2027 with " + nextPicks(S).map(n => `<b><i>${n.t}</i></b> by ${n.a} (${n.c})`).join(" or ") + "." : ""}</p>
+        <div class="vkind" role="radiogroup" aria-label="Which video to post">
+          <button class="vk" role="radio" data-kind="year" aria-checked="true">2026 in books</button>
+          <button class="vk" role="radio" data-kind="voyage" aria-checked="false">🐛 Bookworm voyage</button>
+          <button class="vk" role="radio" data-kind="both" aria-checked="false">Both</button>
+        </div>
+        <canvas class="wr-thumb" id="wr-thumb" width="1080" height="1920" aria-label="Preview of the video you'll post"></canvas>
+        <div class="wr-btns">
+          <button class="wr-btn solid" id="wr-vid"><span>▶ Save video</span></button>
+          <button class="wr-btn" id="wr-dl">⤓ Save picture</button>
+          <button class="wr-btn" id="wr-share">Share video</button>
+          <button class="wr-btn" id="wr-cap">Copy caption</button>
+        </div>
+        <div class="wr-btns">
+          <label class="chk wr-chk"><input type="checkbox" id="vid-music" checked> ♪ Music in my video</label>
+          <button class="wr-btn" id="wr-again">↺ Watch again</button>
+        </div>
+        <div class="postbox" id="postbox" hidden>
+          <div class="pb-k">Post it on</div>
+          <div class="pb-apps">
+            <a class="pb-app" data-app="instagram" target="_blank" rel="noopener">Instagram</a>
+            <a class="pb-app" data-app="tiktok" target="_blank" rel="noopener">TikTok</a>
+            <a class="pb-app" data-app="facebook" target="_blank" rel="noopener">Facebook</a>
+            <a class="pb-app" data-app="whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="pb-app" data-app="youtube" target="_blank" rel="noopener">YouTube Shorts</a>
+            <a class="pb-app" data-app="x" target="_blank" rel="noopener">X</a>
+            <a class="pb-app" data-app="threads" target="_blank" rel="noopener">Threads</a>
+          </div>
+          <p class="wr-note" id="pb-note">Your video is saved. Tap an app to open it, then attach the video from your Downloads or Photos. Your caption is copied when you tap, so just paste it.</p>
+        </div>
+        <p class="wr-note" id="wr-msg"></p>`,
+      after: () => {
+        const yearTxt = `My 2026 Literary Voyage 📚 ${S.countries.length} countries, ${S.J.length} books, ${S.pages.toLocaleString("en-US")} pages, about ${S.words.toLocaleString("en-US")} words. Favourite genre: ${S.byGenre[0][0]}. Reader type: ${S.type.name}. Passport stamps: ${S.countries.join(", ")}.`;
+        const voyTxt = `My 2026 bookworm voyage 🐛 ${S.J.length} books, ${S.countries.length} countries, ${Math.round(S.km).toLocaleString("en-US")} km crawled: ${S.countries.join(" → ")}.`;
+        const cv = document.getElementById("wr-thumb");
+        let A = null, kind = window._pendingKind || "year"; window._pendingKind = null;
+        const capText = () => kind === "voyage" ? voyTxt : kind === "both" ? yearTxt + " " + voyTxt : yearTxt;
+        const setKind = k => {
+          kind = k;
+          document.querySelectorAll(".vk").forEach(b => b.setAttribute("aria-checked", b.dataset.kind === k ? "true" : "false"));
+          loadCardFonts().then(() => { A = buildStoryAssets(S, kind); playPreview(cv, S, A); });
+        };
+        document.querySelectorAll(".vk").forEach(b => b.onclick = e => { e.stopPropagation(); pauseSlides(); setKind(b.dataset.kind); });
+        setKind(kind);
+        const msg = document.getElementById("wr-msg");
+        document.getElementById("wr-again").onclick = e => { e.stopPropagation(); go(0); };
+        document.getElementById("wr-cap").onclick = async e => {
+          e.stopPropagation(); pauseSlides();
+          try { await navigator.clipboard.writeText(capText()); msg.textContent = "Caption copied. Paste it when you post the video."; }
+          catch (err) { msg.textContent = capText(); }
+        };
+        const dl = document.getElementById("wr-dl"), vb = document.getElementById("wr-vid"), shv = document.getElementById("wr-share");
+        if (!DL) { dl.hidden = vb.hidden = shv.hidden = true; }
+        if (!videoType()) { vb.hidden = true; shv.textContent = "Share picture"; }
+        const failMsg = err => { const c = err && err.code; return c === "declined" ? "No problem, nothing was saved." : c === "rate_limited" ? "One moment, then try again." : "Couldn't save it in this view."; };
+        const saveImg = async e => {
+          e.stopPropagation(); pauseSlides();
+          if (!DL) { msg.textContent = "Saving isn't available in this browser."; return; }
+          const still = document.createElement("canvas"); still.width = CARD.W; still.height = CARD.H;
+          await drawShareCard(still, S);
+          still.toBlob(async blob => {
+            try { await DL.save({ filename: "my-2026-literary-voyage.png", data: blob }); msg.textContent = "Picture saved."; }
+            catch (err) { msg.textContent = failMsg(err); }
+          }, "image/png");
+        };
+        let busy = false;
+        const saveVid = async (e, thenPost) => {
+          e.stopPropagation(); pauseSlides();
+          if (busy) return;
+          if (!DL) { msg.textContent = "Saving isn't available in this browser."; return; }
+          if (!videoType()) return saveImg(e);
+          busy = true; vb.disabled = shv.disabled = true;
+          const withMusic = document.getElementById("vid-music").checked && !!ACtor;
+          let actx = null;
+          if (withMusic) { try { actx = new ACtor(); actx.resume && actx.resume(); } catch (e2) { actx = null; } }
+          try {
+            if (!A) { await loadCardFonts(); A = buildStoryAssets(S, kind); }
+            recShow(A.dur);
+            msg.textContent = "Making your video…";
+            const { blob, ext } = await recordCardVideo(S, A, actx, p => recProgress(p, A.dur));
+            recProgress(1, A.dur);
+            await new Promise(r => setTimeout(r, 700));
+            recHide();
+            msg.textContent = "Video ready.";
+            try { await DL.save({ filename: (kind === "voyage" ? "my-2026-bookworm-voyage." : kind === "both" ? "my-2026-literary-voyage-full." : "my-2026-in-books.") + ext, data: blob }); msg.textContent = ext === "mp4" ? "Video saved. It plays like a story, ready for Instagram or TikTok." : "Video saved (WebM). If your phone won't post it, use Save picture instead."; }
+            catch (err) { msg.textContent = failMsg(err); }
+            if (thenPost) showPost();
+          } catch (err) {
+            recHide();
+            if (err && err.code === "cancelled") msg.textContent = "Video cancelled. Nothing was saved.";
+            else { msg.textContent = "Couldn't make a video here, so here's the picture instead."; await saveImg(e); }
+          }
+          busy = false; vb.disabled = shv.disabled = false;
+        };
+        const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+        const APPS = {
+          instagram: "https://www.instagram.com/", tiktok: "https://www.tiktok.com/upload", facebook: "https://www.facebook.com/",
+          whatsapp: mobile ? "https://wa.me/?text=" + encodeURIComponent(capText()) : "https://web.whatsapp.com/",
+          youtube: "https://www.youtube.com/upload", x: "https://x.com/compose/post", threads: "https://www.threads.net/"
+        };
+        document.querySelectorAll(".pb-app").forEach(a => {
+          a.href = APPS[a.dataset.app];
+          a.onclick = e => { e.stopPropagation(); if (a.dataset.app === "whatsapp" && mobile) a.href = "https://wa.me/?text=" + encodeURIComponent(capText()); try { navigator.clipboard.writeText(capText()).catch(() => {}); } catch (err) {} msg.textContent = "Caption copied. Attach your video in " + a.textContent + " and paste the caption."; };
+        });
+        const showPost = () => { const pb = document.getElementById("postbox"); pb.hidden = false; pb.scrollIntoView({ block: "nearest" }); };
+        dl.onclick = saveImg;
+        vb.onclick = e => saveVid(e, false);
+        shv.onclick = e => (videoType() ? saveVid(e, true) : saveImg(e).then(showPost));
+      } }
+  ];
+}
+
+// ---- shareable image (1080×1920 story card) ----
+// on the open web: share the file through the phone's share sheet, otherwise download it
+function askTap(label) {
+  return new Promise(res => {
+    const box = document.getElementById("rec"); box.hidden = false;
+    document.getElementById("rec-t").textContent = "Your video is ready";
+    document.getElementById("rec-n").textContent = "";
+    const b = document.getElementById("rec-x"); b.textContent = label; b.classList.add("go");
+    b.onclick = e => { e.stopPropagation(); b.textContent = "Cancel"; b.classList.remove("go"); box.hidden = true; res(); };
+  });
+}
+const DL = {
+  async save({ filename, data }) {
+    const type = /\.mp4$/.test(filename) ? "video/mp4" : /\.webm$/.test(filename) ? "video/webm" : "image/png";
+    let file = null; try { file = new File([data], filename, { type }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.userActivation && !navigator.userActivation.isActive) await askTap(type.startsWith("video") ? "Share my video" : "Share my picture");
+      try { await navigator.share({ files: [file], title: "My 2026 Literary Voyage" }); return { status: "saved" }; }
+      catch (e) { if (e && e.name === "AbortError") throw { code: "declined" }; }
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(data); a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+    return { status: "saved" };
+  }
+};
+let slidesPaused = false;
+function pauseSlides() { slidesPaused = true; }
+
+// The share card is drawn frame by frame: t = seconds since start. It plays in the preview and records to a video.
+async function loadCardFonts() {
+  try { await Promise.all(["400 80px 'Young Serif'", "500 30px 'IBM Plex Mono'", "400 30px 'IBM Plex Sans'", "italic 400 30px 'IBM Plex Sans'"].map(f => document.fonts.load(f))); } catch (e) {}
+}
+const CARD = { W: 1080, H: 1920, SERIF: "'Young Serif', Georgia, serif", MONO: "'IBM Plex Mono', monospace", SANS: "'IBM Plex Sans', sans-serif" };
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeOut = v => 1 - Math.pow(1 - clamp01(v), 3);
+const wormY = x => 300 + Math.sin(x / 70) * 14;
+
+function buildCardAssets(S) {
+  const { W, H, MONO } = CARD;
+  // static background
+  const bg = document.createElement("canvas"); bg.width = W; bg.height = H;
+  const c = bg.getContext("2d");
+  c.fillStyle = "#12382b"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "rgba(169,223,134,.28)";
+  for (let x = 90; x < 1000; x += 26) { c.beginPath(); c.arc(x, wormY(x), 4, 0, 7); c.fill(); }
+  const px = 90, py = 1210, pw = 900, ph = 580;
+  c.save(); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 30; c.shadowOffsetY = 12;
+  roundRect(c, px, py, pw, ph, 22); c.fillStyle = "#f3ead6"; c.fill(); c.restore();
+  c.save(); roundRect(c, px, py, pw, ph, 22); c.clip();
+  c.strokeStyle = "#c9d8cf"; c.lineWidth = 1.4;
+  for (let j = 0; j < 22; j++) { c.beginPath(); for (let x = 0; x <= pw; x += 10) { const y = py + 60 + j * 26 + Math.sin(x / 40 + j * .7) * 10; x ? c.lineTo(px + x, y) : c.moveTo(px + x, y); } c.stroke(); }
+  c.restore();
+  c.fillStyle = "#8a7c62"; c.font = `500 22px ${MONO}`;
+  c.fillText("PASSPORT · VISAS · ENTRIES", px + 34, py + 50);
+
+  // stamp sprites, each pre-inked once so they don't flicker
+  const items = S.countries.map(c => ({ c })).concat((S.badges || []).map(b => ({ b })));
+  const n = items.length, cols = n <= 2 ? Math.max(1, n) : n <= 6 ? 3 : n <= 12 ? 4 : n <= 20 ? 5 : 6, rows = Math.ceil(n / cols);
+  const cw = (pw - 60) / cols, ch = (ph - 100) / rows, size = Math.min(cw * .95, ch * 1.15, 260);
+  const INKS = ["#b9553f", "#2f6b52", "#2b4a7a", "#7a3a7a", "#8a5a12", "#3d5a80"];
+  const rnd = (i, s) => { const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
+  const sprites = items.map((it, i) => {
+    const sp = document.createElement("canvas"), side = Math.ceil(size * 1.5); sp.width = sp.height = side;
+    const o = sp.getContext("2d");
+    o.translate(side / 2, side / 2);
+    if (it.b) stampBadgeCanvas(o, it.b, size * .95); else stampCountryCanvas(o, it.c, S.J.filter(s => s.country === it.c), size, INKS[i % INKS.length], i);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "destination-out";
+    for (let k = 0; k < side * side / 160; k++) { o.globalAlpha = .25 + Math.random() * .6; o.beginPath(); o.arc(Math.random() * side, Math.random() * side, Math.random() * 2.4, 0, 7); o.fill(); }
+    const lastRow = Math.floor(i / cols) === rows - 1, inLast = n - (rows - 1) * cols, shift = lastRow ? (cols - inLast) * cw / 2 : 0;
+    return { img: sp, side, x: px + 30 + shift + cw * (i % cols + .5) + (rnd(i, 1) - .5) * 20, y: py + 80 + ch * (Math.floor(i / cols) + .5) + (rnd(i, 2) - .5) * 16, rot: (rnd(i, 3) - .5) * .5 };
+  });
+  const step = Math.min(.35, 4.5 / Math.max(1, n));
+  return { bg, sprites, step, stampStart: 5.6, dur: 5.6 + n * step + 2.6 };
+}
+
+function stampCountryCanvas(o, ctry, stops, size, ink, i) {
+  const { SERIF, MONO } = CARD;
+  o.strokeStyle = o.fillStyle = ink; o.textAlign = "center"; o.textBaseline = "middle";
+  const shape = ["circle", "rect", "oval"][i % 3], up = ctry.toUpperCase(), date = stampDate(stops);
+  const fit = (t, max, f) => { o.font = `${f}px ${SERIF}`; while (o.measureText(t).width > max && f > 8) { f--; o.font = `${f}px ${SERIF}`; } };
+  const fitMono = (t, max, f) => { o.font = `500 ${f}px ${MONO}`; while (o.measureText(t).width > max && f > 7) { f--; o.font = `500 ${f}px ${MONO}`; } };
+  if (shape === "circle") {
+    const r = size / 2;
+    o.lineWidth = Math.max(3, r * .06); o.beginPath(); o.arc(0, 0, r, 0, 7); o.stroke();
+    o.lineWidth = Math.max(1.5, r * .025); o.beginPath(); o.arc(0, 0, r - r * .13, 0, 7); o.stroke();
+    arcTextCanvas(o, up, r * .68, Math.min(r * .2, (r * 2.6) / (up.length * .8)), SERIF);
+    fitMono("ENTRY", r, r * .15); o.fillText("ENTRY", 0, -r * .06);
+    fitMono(date, r * 1.3, r * .12); o.fillText(date, 0, r * .18);
+  } else if (shape === "rect") {
+    const w = size * 1.12, h = size * .74;
+    o.lineWidth = Math.max(3, h * .07); roundRect(o, -w / 2, -h / 2, w, h, h * .12); o.stroke();
+    o.lineWidth = Math.max(1.5, h * .03); roundRect(o, -w / 2 + h * .1, -h / 2 + h * .1, w - h * .2, h - h * .2, h * .08); o.stroke();
+    fit(up, w * .8, h * .26); o.fillText(up, 0, -h * .1);
+    const adm = "ADMITTED · " + date; fitMono(adm, w * .8, h * .1); o.fillText(adm, 0, h * .18);
+  } else {
+    const rx = size * .6, ry = size * .42;
+    o.lineWidth = Math.max(3, ry * .08); o.beginPath(); o.ellipse(0, 0, rx, ry, 0, 0, 7); o.stroke();
+    o.lineWidth = Math.max(1.5, ry * .035); o.beginPath(); o.ellipse(0, 0, rx - ry * .14, ry - ry * .14, 0, 0, 7); o.stroke();
+    fit(up, rx * 1.4, ry * .32); o.fillText(up, 0, -ry * .16);
+    const dl = "✈ " + date; fitMono(dl, rx * 1.3, ry * .17); o.fillText(dl, 0, ry * .26);
+  }
+}
+function stampBadgeCanvas(o, ch, size) {
+  const { SERIF, MONO } = CARD, r = size / 2, gold = "#a8741a";
+  o.strokeStyle = o.fillStyle = gold; o.textAlign = "center"; o.textBaseline = "middle";
+  o.lineWidth = Math.max(3, r * .06); o.beginPath();
+  for (let k = 0; k <= 32; k++) { const a = k / 32 * Math.PI * 2, rr = k % 2 ? r * .9 : r; k ? o.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : o.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  o.stroke();
+  o.lineWidth = Math.max(1.5, r * .025); o.beginPath(); o.arc(0, 0, r * .72, 0, 7); o.stroke();
+  const up = ch.name.toUpperCase();
+  arcTextCanvas(o, up, r * .56, Math.min(r * .16, (r * 2) / (up.length * .8)), SERIF);
+  o.font = `400 ${r * .5}px ${SERIF}`; o.fillText("★", 0, r * .06);
+  o.font = `500 ${r * .1}px ${MONO}`; o.fillText("CHALLENGE", 0, r * .5);
+}
+
+function drawCardFrame(c, S, A, t) {
+  const { W, SERIF, MONO, SANS } = CARD;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  c.drawImage(A.bg, 0, 0);
+  // the bookworm crawls along the top
+  const wx = 100 + 880 * easeOut(t / 3);
+  c.fillStyle = "rgba(169,223,134,.75)";
+  for (let x = 90; x < wx - 50; x += 26) { c.beginPath(); c.arc(x, wormY(x), 4.5, 0, 7); c.fill(); }
+  drawWormCanvas(c, wx, wormY(wx), 2.6, t);
+
+  const fade = (a, b) => clamp01((t - a) / (b - a));
+  c.globalAlpha = fade(0, .6);
+  c.fillStyle = "#f2b14c"; c.font = `500 30px ${MONO}`; c.fillText("LITERARY VOYAGE · 2026", 90, 150);
+  c.fillStyle = "#e8f5dc"; c.font = `400 78px ${SERIF}`; c.fillText("My year in books", 90, 240);
+
+  c.globalAlpha = fade(.8, 1.3);
+  const n = String(Math.round(S.countries.length * easeOut((t - .9) / 1.6)));
+  c.fillStyle = "#f2b14c"; c.font = `400 300px ${SERIF}`; c.fillText(n, 80, 640);
+  const nw = c.measureText(String(S.countries.length)).width;
+  c.fillStyle = "#e8f5dc"; c.font = `400 76px ${SERIF}`; c.fillText("countries", 110 + nw, 560);
+  c.font = `400 34px ${SANS}`; c.fillStyle = "rgba(232,245,220,.8)"; c.fillText("read my way through", 114 + nw, 625);
+
+  const stats = [[S.J.length, "books"], [S.pages, "pages"], [S.words, "words, about"], [Math.round(S.km), "km crawled"]];
+  stats.forEach(([v, l], i) => {
+    const a = 2.6 + i * .3; c.globalAlpha = fade(a, a + .4);
+    const x = 90 + (i % 2) * 460, y = 770 + Math.floor(i / 2) * 150;
+    c.fillStyle = "#e8f5dc"; c.font = `400 70px ${SERIF}`; c.fillText(Math.round(v * easeOut((t - a) / 1.2)).toLocaleString("en-US"), x, y);
+    c.fillStyle = "rgba(232,245,220,.7)"; c.font = `500 28px ${MONO}`; c.fillText(l.toUpperCase(), x, y + 44);
+  });
+
+  const fitFont = (txt, max, size) => { let f = size; c.font = `400 ${f}px ${SERIF}`; while (c.measureText(txt).width > max && f > 24) { f -= 2; c.font = `400 ${f}px ${SERIF}`; } };
+  c.globalAlpha = fade(4.3, 5);
+  c.fillStyle = "rgba(232,245,220,.7)"; c.font = `500 28px ${MONO}`; c.fillText("READER TYPE", 90, 1080); c.fillText("FAVOURITE GENRE", 550, 1080);
+  c.fillStyle = "#f2b14c"; fitFont(S.type.name, 430, 52); c.fillText(S.type.name, 90, 1145);
+  c.fillStyle = "#e8f5dc"; fitFont(S.byGenre[0][0], 440, 52); c.fillText(S.byGenre[0][0], 550, 1145);
+
+  // stamps thump onto the passport page one by one
+  A.sprites.forEach((sp, i) => {
+    const p = clamp01((t - A.stampStart - i * A.step) / .3);
+    if (p <= 0) return;
+    const sc = 1 + .8 * (1 - easeOut(p)) - (p > .7 ? Math.sin((p - .7) / .3 * Math.PI) * .05 : 0);
+    c.save(); c.globalAlpha = .9 * p; c.translate(sp.x, sp.y); c.rotate(sp.rot); c.scale(sc, sc);
+    c.drawImage(sp.img, -sp.side / 2, -sp.side / 2); c.restore();
+  });
+
+  c.globalAlpha = fade(A.dur - 2.2, A.dur - 1.4);
+  c.fillStyle = "rgba(232,245,220,.7)"; c.font = `500 24px ${MONO}`; c.textAlign = "center";
+  c.fillText("Good books take time. Read on in 2027.", W / 2, 1862);
+  c.globalAlpha = 1; c.textAlign = "left";
+}
+
+// static picture = the last frame
+async function drawShareCard(cv, S) {
+  await loadCardFonts();
+  const A = buildCardAssets(S);
+  drawCardFrame(cv.getContext("2d"), S, A, A.dur + 1);
+  return A;
+}
+
+// ---- the saved video replays the summary cards exactly as they look here ----
+function makeSprite(it, i, S, size) {
+  const INKS = ["#b9553f", "#2f6b52", "#2b4a7a", "#7a3a7a", "#8a5a12", "#3d5a80"];
+  const sp = document.createElement("canvas"), side = Math.ceil(size * 1.5); sp.width = sp.height = side;
+  const o = sp.getContext("2d"); o.translate(side / 2, side / 2);
+  if (it.b) stampBadgeCanvas(o, it.b, size * .95); else stampCountryCanvas(o, it.c, S.J.filter(s => s.country === it.c), size, INKS[i % INKS.length], i);
+  o.setTransform(1, 0, 0, 1, 0, 0); o.globalCompositeOperation = "destination-out";
+  for (let k = 0; k < side * side / 160; k++) { o.globalAlpha = .25 + Math.random() * .6; o.beginPath(); o.arc(Math.random() * side, Math.random() * side, Math.random() * 2.4, 0, 7); o.fill(); }
+  return { img: sp, side, base: size, badge: !!it.b };
+}
+// ---- the bookworm voyage film: the map, a slow worm, and each book as the star ----
+function buildVoyage(S) {
+  // one stop per country, in the order the reader first got there; books stay in reading order
+  const groups = [];
+  S.J.forEach(b => { let g = groups.find(x => x.country === b.country); if (!g) { g = { country: b.country, iso: b.iso, lon: b.lon, lat: b.lat, books: [] }; groups.push(g); } g.books.push(b); });
+  const ev = []; let t = 2.4;
+  const totalBooks = S.J.length;
+  let per = 1.9; // seconds each book stays on screen
+  const travelOf = (a, b) => Math.min(2.8, 1.4 + d3.geoDistance([a.lon, a.lat], [b.lon, b.lat]) * .6);
+  let est = 2.4 + 4.2 + d3.sum(groups.slice(1), (g, i) => travelOf(groups[i], g)) + totalBooks * per;
+  if (est > 72) per = Math.max(1.1, per - (est - 72) / totalBooks);
+  let n = 0, km = 0;
+  groups.forEach((g, gi) => {
+    if (gi) { const d = travelOf(groups[gi - 1], g); km += d3.geoDistance([groups[gi - 1].lon, groups[gi - 1].lat], [g.lon, g.lat]) * 6371; ev.push({ type: "travel", gi, t0: t, t1: t + d }); t += d; }
+    g.books.forEach((b, bi) => { n++; const d = per + (bi === 0 ? .35 : 0); ev.push({ type: "book", gi, b, n, km, t0: t, t1: t + d }); t += d; });
+  });
+  return { groups, ev, dur: t + 4.4, outro: t, totalKm: km };
+}
+function coverColor(title) { let h = 0; for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ["#b9553f", "#2f6b52", "#2b4a7a", "#7a3a7a", "#8a5a12", "#3d5a80", "#5a1a22", "#1f5f5b"][h % 8]; }
+function wrapLines(c, text, maxW, maxLines) {
+  const words = String(text).split(" "), lines = []; let line = "";
+  for (const w of words) { const t = line ? line + " " + w : w; if (c.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
+  return lines;
+}
+function drawVoyageFull(c, S, V, t) {
+  const { W, H, SERIF, MONO, SANS } = CARD, MAPCY = 820;
+  const fitF = (txt, max, size, pre = "400", fam = SERIF) => { let f = size; c.font = `${pre} ${f}px ${fam}`; while (c.measureText(txt).width > max && f > 20) { f -= 2; c.font = `${pre} ${f}px ${fam}`; } return f; };
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  // where are we?
+  let cur = V.ev.findIndex(e => t < e.t1); if (cur < 0) cur = V.ev.length - 1;
+  const e = V.ev[cur], G = V.groups;
+  const STOPZ = 2300, ll = g => [g.lon, g.lat];
+  const legZoom = (a, b) => { const p = d3.geoMercator().rotate([-(a.lon + b.lon) / 2, 0]).center([0, (a.lat + b.lat) / 2]).scale(1).translate([0, 0]); const pa = p(ll(a)), pb = p(ll(b)); return Math.max(230, Math.min(STOPZ, Math.min(W * .62 / Math.abs(pa[0] - pb[0] || 1e-6), 900 / Math.abs(pa[1] - pb[1] || 1e-6)))); };
+  let camLL, camZ, head, prevHead, reachedG, reading = false, f = 0;
+  if (t < V.ev[0].t0) { const g = G[0]; camLL = ll(g); camZ = STOPZ * (0.55 + .45 * easeOut(t / 2.4)); head = camLL; prevHead = [g.lon - 1, g.lat]; reachedG = 0; }
+  else if (e.type === "travel") {
+    const a = G[e.gi - 1], b = G[e.gi]; f = d3.easeSinInOut(clamp01((t - e.t0) / (e.t1 - e.t0)));
+    const ip = d3.geoInterpolate(ll(a), ll(b)); head = ip(f); prevHead = ip(Math.max(0, f - .02)); camLL = head;
+    const zl = legZoom(a, b), bump = Math.max(0, Math.log(STOPZ) - Math.log(zl));
+    camZ = Math.exp(Math.log(STOPZ) - bump * Math.sin(Math.PI * f));
+    reachedG = e.gi - 1;
+  } else {
+    const g = G[e.gi]; head = ll(g); camLL = head; camZ = STOPZ; reachedG = e.gi; reading = true;
+    const tr = V.ev.slice(0, cur).reverse().find(x => x.type === "travel"); prevHead = tr ? d3.geoInterpolate(ll(G[tr.gi - 1]), ll(g))(.98) : [g.lon - 1, g.lat];
+  }
+  if (t >= V.outro) {
+    reachedG = G.length - 1;
+    const o = easeOut((t - V.outro) / 1.8), pad = [];
+    G.forEach(g => pad.push(ll(g), [g.lon - 4, g.lat - 3], [g.lon + 4, g.lat + 3]));
+    const fit = d3.geoMercator().rotate([-camLL[0], 0]).fitExtent([[70, 190], [W - 70, 1060]], { type: "MultiPoint", coordinates: pad });
+    const k2 = Math.min(STOPZ, fit.scale()), c2 = fit.invert([W / 2, MAPCY]) || camLL;
+    camLL = d3.geoInterpolate(camLL, c2)(o); camZ = Math.exp(Math.log(STOPZ) * (1 - o) + Math.log(k2) * o);
+  }
+  const pj = d3.geoMercator().rotate([-camLL[0], 0]).center([0, camLL[1]]).scale(camZ).translate([W / 2, MAPCY]);
+  const gp = d3.geoPath(pj, c);
+  // sea, graticule, land
+  const sea = c.createLinearGradient(0, 0, 0, H); sea.addColorStop(0, "#0c1a2b"); sea.addColorStop(1, "#08121f");
+  c.fillStyle = sea; c.fillRect(0, 0, W, H);
+  c.strokeStyle = "rgba(120,160,200,.07)"; c.lineWidth = 1.2; c.beginPath(); gp(d3.geoGraticule().step([10, 10])()); c.stroke();
+  const visitedIso = new Set(G.slice(0, reachedG + 1).map(g => g.iso));
+  if (WORLD) WORLD.forEach(ft => { c.beginPath(); gp(ft); const v = visitedIso.has(ft.id); c.fillStyle = v ? "#2c5a45" : "#1c2d42"; c.fill(); c.strokeStyle = v ? "#4f8f6e" : "#2e4662"; c.lineWidth = v ? 1.6 : 1; c.stroke(); });
+  // travelled route only, so the map never turns into spaghetti
+  const pathTo = [];
+  for (let i = 1; i <= Math.min(reachedG, G.length - 1); i++) pathTo.push([ll(G[i - 1]), ll(G[i])]);
+  c.lineCap = "round"; c.setLineDash([1, 16]); c.strokeStyle = "rgba(143,207,106,.85)"; c.lineWidth = 8;
+  pathTo.forEach(([a, b]) => { c.beginPath(); gp({ type: "LineString", coordinates: [a, b] }); c.stroke(); });
+  if (e.type === "travel" && t < V.outro && t >= V.ev[0].t0) { c.beginPath(); gp({ type: "LineString", coordinates: [ll(G[e.gi - 1]), head] }); c.stroke(); }
+  c.setLineDash([]);
+  // stops + labels (labels skip any spot that would overlap another)
+  const boxes = [];
+  const order = G.map((g, i) => i).sort((a, b) => (b === reachedG) - (a === reachedG) || G[b].books.length - G[a].books.length);
+  const drawLater = [];
+  order.forEach(i => {
+    const g = G[i];
+    if (i > reachedG) return;
+    const p = pj(ll(g)); if (!p || p[0] < -100 || p[0] > W + 100 || p[1] < -100 || p[1] > H + 100) return;
+    const isCur = i === reachedG && t < V.outro;
+    c.beginPath(); c.arc(p[0], p[1], isCur ? 15 : 11, 0, 7); c.fillStyle = "#7fd1a8"; c.fill();
+    if (isCur) { const pulse = (t * 1.2) % 1; c.beginPath(); c.arc(p[0], p[1], 15 + pulse * 30, 0, 7); c.strokeStyle = `rgba(127,209,168,${.6 * (1 - pulse)})`; c.lineWidth = 4; c.stroke(); }
+    const books = g.books.filter(b => V.ev.some(x => x.type === "book" && x.b === b && x.t0 <= t)).length;
+    const fs = isCur ? 46 : camZ < 900 ? 26 : 32;
+    c.font = `400 ${fs}px ${SERIF}`;
+    const label = g.country + (books > 1 ? " ×" + books : ""), w = c.measureText(label).width;
+    const bx = p[0] + 24, by = p[1] - fs * .7, box = [bx - 4, by - 4, bx + w + 4, by + fs + 4];
+    if (boxes.some(q => !(box[2] < q[0] || box[0] > q[2] || box[3] < q[1] || box[1] > q[3]))) return;
+    boxes.push(box);
+    drawLater.push(() => { c.font = `400 ${fs}px ${SERIF}`; c.lineWidth = 8; c.strokeStyle = "#0b1522"; c.fillStyle = "#eef4ea"; c.strokeText(label, bx, p[1] + fs * .3); c.fillText(label, bx, p[1] + fs * .3); });
+  });
+  drawLater.forEach(fn => fn());
+  // the bookworm
+  if (t < V.outro + .8) {
+    const hp = pj(head), pp = pj(prevHead) || hp;
+    c.save(); c.translate(hp[0], hp[1]); c.rotate(Math.atan2(hp[1] - pp[1], hp[0] - pp[0]) || 0); drawWormCanvas(c, 0, 0, 3.4, t * (reading ? .3 : 1)); c.restore();
+    if (reading) drawBookCanvas(c, hp[0], hp[1] - 62, 4.2, t);
+  }
+  // top bar: progress + running totals
+  const top = c.createLinearGradient(0, 0, 0, 260); top.addColorStop(0, "rgba(8,18,31,.92)"); top.addColorStop(1, "rgba(8,18,31,0)");
+  c.fillStyle = top; c.fillRect(0, 0, W, 260);
+  const booksSoFar = e.type === "book" ? e.n : V.ev.slice(0, cur).filter(x => x.type === "book").length;
+  const kmSoFar = e.type === "travel" ? (V.ev.slice(0, cur).reverse().find(x => x.type === "book") || { km: 0 }).km + d3.geoDistance(ll(G[e.gi - 1]), head) * 6371 : (e.km || 0);
+  const shownBooks = t >= V.outro ? S.J.length : booksSoFar, shownKm = t >= V.outro ? V.totalKm : kmSoFar;
+  c.globalAlpha = .28; c.fillStyle = "#e9eef4"; roundRect(c, 60, 60, W - 120, 8, 4); c.fill();
+  c.globalAlpha = 1; roundRect(c, 60, 60, Math.max(8, (W - 120) * shownBooks / S.J.length), 8, 4); c.fill();
+  c.fillStyle = "#f2b14c"; c.font = `500 28px ${MONO}`; c.fillText("2026 · BOOKWORM VOYAGE", 60, 125);
+  c.fillStyle = "#e9eef4"; c.font = `500 30px ${MONO}`; c.textAlign = "right";
+  c.fillText(`${shownBooks}/${S.J.length} books · ${Math.round(shownKm).toLocaleString("en-US")} km`, W - 60, 125); c.textAlign = "left";
+
+  // the book card: the star of each stop
+  if (e.type === "book" && t < V.outro) {
+    const b = e.b, lt = t - e.t0, dd = e.t1 - e.t0;
+    const inP = easeOut(lt / .45), outP = clamp01((lt - (dd - .3)) / .3);
+    const y0 = 1270 + (1 - inP) * 160 + outP * 60, al = inP * (1 - outP);
+    const bot = c.createLinearGradient(0, 1080, 0, H); bot.addColorStop(0, "rgba(8,18,31,0)"); bot.addColorStop(.25, "rgba(8,18,31,.9)"); bot.addColorStop(1, "rgba(8,18,31,.98)");
+    c.fillStyle = bot; c.fillRect(0, 1080, W, H - 1080);
+    c.save(); c.globalAlpha = al;
+    // cover
+    const cx = 80, cw = 300, ch = 440, col = coverColor(b.title);
+    c.save(); c.translate(cx + cw / 2, y0 + ch / 2); c.rotate(-.04 + .04 * inP);
+    c.shadowColor = "rgba(0,0,0,.5)"; c.shadowBlur = 30; c.shadowOffsetY = 14;
+    roundRect(c, -cw / 2, -ch / 2, cw, ch, 10); c.fillStyle = col; c.fill(); c.shadowColor = "transparent";
+    c.fillStyle = "rgba(0,0,0,.22)"; c.fillRect(-cw / 2, -ch / 2, 22, ch);
+    c.strokeStyle = "rgba(255,240,210,.55)"; c.lineWidth = 2; roundRect(c, -cw / 2 + 36, -ch / 2 + 22, cw - 58, ch - 44, 6); c.stroke();
+    c.fillStyle = "#fbf3e2"; c.textAlign = "center"; c.font = `400 40px ${SERIF}`;
+    const tl = wrapLines(c, b.title, cw - 90, 4); tl.forEach((l, i) => c.fillText(l, 11, -ch / 2 + 110 + i * 48));
+    c.font = `500 20px ${MONO}`; c.fillText(String(b.author).toUpperCase().slice(0, 22), 11, ch / 2 - 50);
+    c.restore();
+    // details
+    const tx = 430, maxW = W - tx - 70;
+    c.textAlign = "left"; c.fillStyle = "#f2b14c"; c.font = `500 28px ${MONO}`; c.fillText(`BOOK ${e.n} OF ${S.J.length}`, tx, y0 + 40);
+    c.fillStyle = "#f4f7f2"; let fs = 64; c.font = `400 ${fs}px ${SERIF}`;
+    let lines = wrapLines(c, b.title, maxW, 3); while (lines.length === 3 && fs > 44 && wrapLines(c, b.title, maxW, 4).length > 3) { fs -= 4; c.font = `400 ${fs}px ${SERIF}`; lines = wrapLines(c, b.title, maxW, 3); }
+    lines.forEach((l, i) => c.fillText(l, tx, y0 + 120 + i * fs * 1.1));
+    let yy = y0 + 120 + lines.length * fs * 1.1 + 10;
+    c.fillStyle = "#dfe7ee"; c.font = `600 34px ${SANS}`; c.fillText(wrapLines(c, `${b.author}, ${b.year}`, maxW, 1)[0], tx, yy); yy += 56;
+    c.fillStyle = "rgba(223,231,238,.8)"; c.font = `400 30px ${SANS}`;
+    const where = b.basis === "author" ? `Stamped in ${b.country}, where the author lived` : `Set in ${String(b.city).replace(/ \(.*\)/, "")}, ${b.country}`;
+    wrapLines(c, where, maxW, 2).forEach(l => { c.fillText(l, tx, yy); yy += 44; });
+    c.font = `500 24px ${MONO}`; const gw = c.measureText(String(b.genre).toUpperCase()).width + 36;
+    c.strokeStyle = "rgba(223,231,238,.6)"; c.lineWidth = 2; roundRect(c, tx, yy + 4, gw, 48, 24); c.stroke(); c.fillStyle = "#dfe7ee"; c.fillText(String(b.genre).toUpperCase(), tx + 18, yy + 37);
+    c.restore();
+  }
+  // opening title
+  if (t < 2.6) {
+    const a = 1 - clamp01((t - 1.8) / .8);
+    c.fillStyle = `rgba(8,18,31,${.7 * a})`; c.fillRect(0, 0, W, H);
+    c.globalAlpha = a; c.textAlign = "center";
+    c.fillStyle = "#f2b14c"; c.font = `500 32px ${MONO}`; c.fillText("LITERARY VOYAGE · 2026", W / 2, 1360);
+    c.fillStyle = "#f4f7f2"; fitF("My bookworm voyage", W - 140, 96); c.fillText("My bookworm voyage", W / 2, 1480);
+    c.fillStyle = "#dfe7ee"; fitF(`${S.J.length} books · ${G.length} countries`, W - 160, 40, "400", SANS); c.fillText(`${S.J.length} books · ${G.length} countries`, W / 2, 1560);
+    c.globalAlpha = 1; c.textAlign = "left";
+  }
+  // closing card over the whole route
+  if (t >= V.outro) {
+    const a = easeOut((t - V.outro - .6) / 1);
+    const bot = c.createLinearGradient(0, 1050, 0, H); bot.addColorStop(0, "rgba(8,18,31,0)"); bot.addColorStop(.3, "rgba(8,18,31,.92)"); bot.addColorStop(1, "rgba(8,18,31,.98)");
+    c.globalAlpha = a; c.fillStyle = bot; c.fillRect(0, 1050, W, H - 1050);
+    c.fillStyle = "#e9eef4"; c.font = `500 30px ${MONO}`; c.fillText("MY BOOKWORM CRAWLED", 80, 1330);
+    c.fillStyle = "#f4f7f2"; fitF(Math.round(V.totalKm).toLocaleString("en-US"), W - 160, 180); c.fillText(Math.round(V.totalKm * easeOut((t - V.outro - .6) / 1.6)).toLocaleString("en-US"), 70, 1510);
+    c.font = `400 60px ${SERIF}`; c.fillText("kilometres", 80, 1590);
+    c.font = `400 36px ${SANS}`; c.fillStyle = "#dfe7ee"; c.fillText(`${G.length} countries · ${S.J.length} books`, 80, 1660);
+    c.font = `500 28px ${MONO}`; c.globalAlpha = a * .8; c.textAlign = "center"; c.fillText("Good books take time. Read on in 2027.", W / 2, 1830);
+    c.globalAlpha = 1; c.textAlign = "left";
+  }
+}
+
+function buildStoryAssets(S, kind = "year") {
+  const items = S.countries.map(c => ({ c })).concat((S.badges || []).map(b => ({ b })));
+  const sprites = items.map((it, i) => makeSprite(it, i, S, 240));
+  const n = items.length, step = Math.min(.32, 4 / Math.max(1, n));
+  const legs = Math.max(1, S.J.length - 1);
+  const voyageLen = Math.min(14, 5 + legs * .35);
+  const voy = kind === "year" ? null : buildVoyage(S);
+  const scenes = kind === "voyage" ? [["voyagefull", voy.dur]] : [
+    ["countries", 3.4], ["pages", 3], ["words", 3.2], ["distance", 3.6], ["time", 3.2], ["genre", 3.2],
+    ["places", 3], ["type", 3.4], ...(S.best ? [["best", 3.6]] : []), ["passport", 2.2 + n * step + 2], ["outro", 3.6], ...(kind === "both" ? [["voyagefull", voy.dur]] : [])
+  ];
+  let t = 0; scenes.forEach(s => { s.push(t); t += s[1]; });
+  return { sprites, step, scenes, dur: t, voy };
+}
+const SB = { vintro: ["#0f1b2b", "#e9eef4"], voutro: ["#12382b", "#e8f5dc"], voyage: ["#0f1b2b", "#e9eef4"], best: ["#f4ead5", "#2a2018"], countries: ["#12382b", "#e8f5dc"], pages: ["#f2b14c", "#1b1408"], words: ["#f4ead5", "#2a2018"], distance: ["#0f1b2b", "#e9eef4"], time: ["#b9553f", "#fbefe4"], genre: ["#2b2140", "#efe7ff"], places: ["#1d2f4a", "#e9eef4"], type: ["#3a2433", "#fbe9f0"], challenges: ["#16323a", "#e3f4f2"], passport: ["#1c1412", "#f4ead5"], outro: ["#12382b", "#e8f5dc"] };
+
+function drawStory(c, S, A, t) {
+  const { W, H, SERIF, MONO, SANS } = CARD, L = 80, MAXW = W - 2 * L;
+  let k = A.scenes.findIndex(s => t < s[2] + s[1]); if (k < 0) k = A.scenes.length - 1;
+  const [name, d, start] = A.scenes[k], lt = t - start;
+  if (name === "voyagefull") { drawVoyageFull(c, S, A.voy, lt); return; }
+  const [bg, fg] = SB[name];
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  // story chrome: progress bars + header
+  const nb = A.scenes.length, gap = 10, bw = (W - 120 - gap * (nb - 1)) / nb;
+  A.scenes.forEach((s, i) => {
+    c.globalAlpha = .28; c.fillStyle = fg; roundRect(c, 60 + i * (bw + gap), 60, bw, 8, 4); c.fill();
+    const f = i < k ? 1 : i > k ? 0 : clamp01(lt / d);
+    if (f > 0) { c.globalAlpha = 1; roundRect(c, 60 + i * (bw + gap), 60, Math.max(8, bw * f), 8, 4); c.fill(); }
+  });
+  c.globalAlpha = .8; c.fillStyle = fg; c.font = `500 28px ${MONO}`; c.fillText("2026 · LITERARY VOYAGE", 60, 135);
+  c.globalAlpha = 1;
+  const ap = (a, b = a + .5) => clamp01((lt - a) / (b - a));       // appear progress
+  const T = (s, x, y, font, col = fg, al = 1, align = "left") => { c.globalAlpha = al; c.fillStyle = col; c.font = font; c.textAlign = align; c.fillText(s, x, y); c.textAlign = "left"; c.globalAlpha = 1; };
+  const kicker = (s, y) => { c.globalAlpha = .85 * ap(0, .4); c.fillStyle = fg; c.font = `500 31px ${MONO}`; spaced(s.toUpperCase(), L, y, 3); c.globalAlpha = 1; };
+  const spaced = (s, x, y, sp) => { let xx = x; for (const ch of s) { c.fillText(ch, xx, y); xx += c.measureText(ch).width + sp; } };
+  const fitSize = (s, max, size, weight = "400") => { let f = size; c.font = `${weight} ${f}px ${SERIF}`; while (c.measureText(s).width > max && f > 30) { f -= 4; c.font = `${weight} ${f}px ${SERIF}`; } return f; };
+  const big = (v, y, base = 270) => { const fin = Math.round(v).toLocaleString("en-US"), f = fitSize(fin, MAXW, base); c.globalAlpha = ap(.2, .6); c.fillStyle = fg; c.font = `400 ${f}px ${SERIF}`; c.fillText(Math.round(v * easeOut((lt - .3) / 1.3)).toLocaleString("en-US"), L - 6, y); c.globalAlpha = 1; };
+  const h2 = (s, y, size = 80) => { const f = fitSize(s, MAXW, size); T(s, L, y, `400 ${f}px ${SERIF}`, fg, ap(.5, .9)); };
+  const para = (s, y, al = ap(.9, 1.4), size = 40, maxLines = 6) => {
+    c.globalAlpha = al * .92; c.fillStyle = fg; c.font = `400 ${size}px ${SANS}`;
+    const words = s.split(" "); let line = "", yy = y, lines = 0;
+    for (const w of words) { const tst = line ? line + " " + w : w; if (c.measureText(tst).width > MAXW && line) { c.fillText(line, L, yy); yy += size * 1.5; line = w; if (++lines >= maxLines - 1) { } } else line = tst; }
+    if (line) c.fillText(line, L, yy);
+    c.globalAlpha = 1; return yy + size * 1.5;
+  };
+
+  if (name === "countries") {
+    kicker("This year you read your way through", 560);
+    big(S.countries.length, 830); h2("countries", 940);
+    const mx = L, my = 1010, mw = MAXW, mh = 480;
+    if (WORLD) {
+      const pj = d3.geoNaturalEarth1().fitExtent([[mx, my], [mx + mw, my + mh]], { type: "Sphere" }), gp = d3.geoPath(pj, c);
+      const isos = [...new Set(S.J.map(s => s.iso))];
+      WORLD.forEach(f => { const vi = isos.indexOf(f.id); c.beginPath(); gp(f);
+        if (vi < 0) { c.globalAlpha = .14; c.fillStyle = "#ffffff"; } else { c.globalAlpha = clamp01((lt - .8 - vi * (1.6 / isos.length)) / .3); c.fillStyle = "#a9df86"; }
+        c.fill(); });
+      c.globalAlpha = 1;
+    }
+    para(S.countries.join(", ") + ".", 1590, ap(1.2, 1.7), 36, 4);
+  } else if (name === "voyage") {
+    kicker("Your voyage", 470);
+    h2(`${S.J.length} books, ${S.countries.length} countries`, 580, 72);
+    const mx = L - 20, my = 660, mw = MAXW + 40, mh = 900;
+    c.save(); roundRect(c, mx, my, mw, mh, 28); c.fillStyle = "#0b1522"; c.fill(); c.clip();
+    const J = S.J, coords = J.map(b => [b.lon, b.lat]), pad = [];
+    J.forEach(b => pad.push([b.lon, b.lat], [b.lon - 12, b.lat - 8], [b.lon + 12, b.lat + 8]));
+    const pj = d3.geoMercator().fitExtent([[mx + 30, my + 30], [mx + mw - 30, my + mh - 30]], { type: "MultiPoint", coordinates: pad }), gp = d3.geoPath(pj, c);
+    const legs = d3.range(1, J.length).map(i => Math.max(.15, d3.geoDistance(coords[i - 1], coords[i]))), tot = d3.sum(legs) || 1;
+    const prog = clamp01((lt - .4) / Math.max(2, d - 1.6)) * tot;
+    let acc = 0, leg = 1; while (leg < J.length && acc + legs[leg - 1] <= prog) { acc += legs[leg - 1]; leg++; }
+    const reachedN = leg, head = leg < J.length ? d3.geoInterpolate(coords[leg - 1], coords[leg])((prog - acc) / legs[leg - 1]) : coords[J.length - 1];
+    const seenIso = new Set(J.slice(0, reachedN).map(b => b.iso));
+    if (WORLD) WORLD.forEach(f => { c.beginPath(); gp(f); c.fillStyle = seenIso.has(f.id) ? "#2f5a46" : "#22344a"; c.fill(); c.strokeStyle = "#36506d"; c.lineWidth = 1; c.stroke(); });
+    c.setLineDash([2, 12]); c.lineCap = "round"; c.strokeStyle = "rgba(242,177,76,.6)"; c.lineWidth = 3; c.beginPath(); gp({ type: "LineString", coordinates: coords }); c.stroke();
+    c.setLineDash([1, 14]); c.strokeStyle = "#8fcf6a"; c.lineWidth = 7; c.beginPath(); gp({ type: "LineString", coordinates: coords.slice(0, Math.min(leg, J.length)).concat([head]) }); c.stroke(); c.setLineDash([]);
+    J.forEach((b, i) => { const p = pj([b.lon, b.lat]); c.beginPath(); c.arc(p[0], p[1], 9, 0, 7); c.fillStyle = i < reachedN ? "#7fd1a8" : "#0f1b2b"; c.fill(); c.strokeStyle = i < reachedN ? "#7fd1a8" : "#f2b14c"; c.lineWidth = 3; c.stroke(); });
+    const hp = pj(head), prev = pj(coords[Math.max(0, Math.min(leg, J.length) - 1)]);
+    c.save(); c.translate(hp[0], hp[1]); c.rotate(Math.atan2(hp[1] - prev[1], hp[0] - prev[0]) || 0); drawWormCanvas(c, 0, 0, 3.6, lt); c.restore();
+    c.restore();
+    const cur = J[Math.min(reachedN, J.length) - 1];
+    T(`${Math.min(reachedN, J.length)} · ${cur.title} · ${cur.country}`.slice(0, 48), L, my + mh + 80, `500 32px ${MONO}`, fg, ap(.4));
+  } else if (name === "vintro") {
+    T("LITERARY VOYAGE · 2026", L, 700, `500 31px ${MONO}`, "#f2b14c", ap(0));
+    h2("My bookworm voyage", 830, 104);
+    const wx = 150 + 760 * easeOut((lt - .2) / 2.2);
+    c.fillStyle = fg; c.globalAlpha = .25; for (let x = L; x < W - L; x += 26) { c.beginPath(); c.arc(x, 1000, 5, 0, 7); c.fill(); } c.globalAlpha = 1;
+    c.fillStyle = "#a9df86"; for (let x = L; x < wx - 70; x += 26) { c.beginPath(); c.arc(x, 1000, 5, 0, 7); c.fill(); }
+    drawWormCanvas(c, wx, 1000, 4.6, lt);
+    para(`${S.J.length} books, ${S.countries.length} countries, one very patient bookworm.`, 1140, ap(.8, 1.3), 42);
+  } else if (name === "voutro") {
+    kicker("My bookworm crawled", 600); big(Math.round(S.km), 870); h2("kilometres", 980);
+    para(`${S.km >= 40075 ? `That's ${(S.km / 40075).toFixed(1)} times around the Earth` : `That's ${Math.round(S.km / 40075 * 100)}% of the way around the Earth`}, through ${S.countries.length} countries and ${S.J.length} books.`, 1080, ap(.8, 1.3), 42);
+    drawWormCanvas(c, 620, 1420, 7, lt * .4); drawBookCanvas(c, 620, 1330, 5.5, lt);
+    T("Good books take time. Read on in 2027.", W / 2, 1780, `500 30px ${MONO}`, fg, ap(1.6) * .8, "center");
+  } else if (name === "best") {
+    kicker("Your best book of 2026", 600);
+    const b = S.best, bx = L, by = 680, bw = MAXW, bh = 760;
+    c.globalAlpha = ap(.2, .7); c.strokeStyle = fg; c.lineWidth = 5; roundRect(c, bx, by, bw, bh, 40); c.stroke();
+    T("★", bx + 60, by + 150, `400 ${110 * (0.6 + .4 * easeOut((lt - .4) / .5))}px ${SERIF}`, "#b9553f", ap(.4, .8));
+    let f = fitSize(b.title, bw - 120, 110); T(b.title, bx + 60, by + 300, `400 ${f}px ${SERIF}`, fg, ap(.6, 1));
+    T(`${b.author}, ${b.year}`, bx + 60, by + 390, `600 40px ${SANS}`, fg, ap(.9, 1.3));
+    T(b.basis === "author" ? "STAMPED IN " + b.country.toUpperCase() : ("SET IN " + b.city.replace(/ \(.*\)/, "") + ", " + b.country).toUpperCase().slice(0, 44), bx + 60, by + 460, `500 28px ${MONO}`, fg, ap(1.1, 1.5) * .8);
+    if (b.blurb) { c.save(); c.translate(0, 0); const keepL = L; c.restore(); c.globalAlpha = ap(1.4, 1.9) * .9; c.fillStyle = fg; c.font = `400 34px ${SANS}`; const ws = b.blurb.split(" "); let line = "", yy = by + 550, n = 0; for (const w of ws) { const tt = line ? line + " " + w : w; if (c.measureText(tt).width > bw - 120 && line) { c.fillText(line, bx + 60, yy); yy += 50; line = w; if (++n >= 3) { line += "…"; break; } } else line = tt; } if (n < 4) c.fillText(line, bx + 60, yy); c.globalAlpha = 1; }
+  } else if (name === "pages") {
+    kicker("You turned", 640); big(S.pages, 910); h2(`pages across ${S.J.length} books`, 1020, 74);
+    para(`That's about ${S.hours} hours of reading, at a gentle 40 pages an hour. ${S.hours} hours spent inside other people's lives.`, 1130);
+  } else if (name === "words") {
+    kicker("Word by word, you read about", 600); big(S.words, 870); h2("words", 980);
+    const g = Math.max(1, Math.round(S.words / 47000)), shown = Math.min(g, 10), cols = ["#2f6b52", "#b9553f", "#2b4a7a"];
+    for (let i = 0; i < shown; i++) { const p = ap(.8 + i * .1, 1.1 + i * .1); if (!p) continue; c.globalAlpha = p; c.fillStyle = cols[i % 3]; roundRect(c, L + i * 72, 1040 + (1 - p) * 20, 56, 82, 6); c.fill(); c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(L + i * 72, 1040 + (1 - p) * 20, 8, 82); }
+    if (g > shown) T("×" + g, L + shown * 72 + 14, 1100, `400 72px ${SERIF}`, fg, ap(.8 + shown * .1));
+    c.globalAlpha = 1;
+    para(`That's about ${g} copies of The Great Gatsby, back to back. (Estimated at ${WORDS_PER_PAGE} words a page.)`, 1210);
+  } else if (name === "distance") {
+    kicker("Your bookworm crawled", 600); big(Math.round(S.km), 870); h2("kilometres", 980);
+    const wx = 220 + 680 * easeOut((lt - .4) / 2.6);
+    c.fillStyle = fg; c.globalAlpha = .3; for (let x = L; x < W - L; x += 26) { c.beginPath(); c.arc(x, 1130, 5, 0, 7); c.fill(); } c.globalAlpha = 1;
+    c.fillStyle = "#a9df86"; for (let x = L; x < wx - 60; x += 26) { c.beginPath(); c.arc(x, 1130, 5, 0, 7); c.fill(); }
+    drawWormCanvas(c, wx, 1130, 4.2, lt);
+    para(S.km >= 40075 ? `That's ${(S.km / 40075).toFixed(1)} times around the Earth, one page at a time.` : `That's ${Math.round(S.km / 40075 * 100)}% of the way around the Earth, one page at a time.`, 1260);
+  } else if (name === "time") {
+    kicker("You also travelled through time", 560); big(S.newest.year - S.oldest.year, 830); h2("years of literature", 940);
+    const y0 = S.oldest.year, y1 = S.newest.year, ly = 1080;
+    c.globalAlpha = .35; c.fillStyle = fg; c.fillRect(L, ly - 2, MAXW, 4); c.globalAlpha = 1;
+    S.J.slice().sort((a, b) => a.year - b.year).forEach((s, i, arr) => { const p = ap(.8 + i * (1.2 / arr.length), 1 + i * (1.2 / arr.length)); if (!p) return; const x = L + 20 + (s.year - y0) / ((y1 - y0) || 1) * (MAXW - 40); c.globalAlpha = p; c.fillStyle = fg; c.beginPath(); c.arc(x, ly, 16 * p, 0, 7); c.fill(); });
+    T(String(y0), L, ly + 70, `500 30px ${MONO}`, fg, ap(1)); T(String(y1), W - L, ly + 70, `500 30px ${MONO}`, fg, ap(1), "right");
+    para(`From ${S.oldest.author}'s ${S.oldest.title} (${S.oldest.year}) to ${S.newest.author}'s ${S.newest.title} (${S.newest.year}).`, 1240);
+  } else if (name === "genre") {
+    kicker("Your favourite genre", 520); h2(S.byGenre[0][0], 640, 110);
+    const tg = S.byGenre[0][1]; let y = para(`${tg.n} ${tg.n > 1 ? "books" : "book"}: ${tg.books.slice(0, 4).join(", ")}${tg.books.length > 4 ? "…" : ""}.`, 740, ap(.6, 1), 38, 3);
+    y += 30;
+    S.byGenre.slice(0, 7).forEach((gx, i) => {
+      const yy = y + i * 90, p = easeOut((lt - .8 - i * .15) / .8), top = i === 0;
+      T(gx[0], L, yy + 12, `${top ? 600 : 400} 34px ${SANS}`, fg, top ? 1 : .85);
+      c.globalAlpha = .12; c.fillStyle = "#ffffff"; roundRect(c, L + 400, yy - 14, MAXW - 480, 30, 15); c.fill();
+      c.globalAlpha = top ? 1 : .55; c.fillStyle = top ? "#f2b14c" : fg; roundRect(c, L + 400, yy - 14, Math.max(30, (MAXW - 480) * gx[1].n / S.byGenre[0][1].n * p), 30, 15); c.fill();
+      T(String(gx[1].n), W - L, yy + 12, `500 32px ${MONO}`, fg, 1, "right");
+    });
+  } else if (name === "places") {
+    kicker("Your favourite places", 640);
+    [[S.byCountry[0][0], `most-visited country · ${S.byCountry[0][1]} books`], [S.byAuthor[0][0], `most-read author · ${S.byAuthor[0][1]} books`], [S.longest.title, `longest book · ${S.longest.pages} pages`]].forEach(([v, l], i) => {
+      const y = 800 + i * 210, a = ap(.3 + i * .35, .7 + i * .35); const f = fitSize(v, MAXW, 84);
+      T(v, L, y, `400 ${f}px ${SERIF}`, fg, a); T(l, L, y + 56, `500 30px ${MONO}`, fg, a * .8);
+    });
+  } else if (name === "type") {
+    kicker("Your reader type", 520);
+    const wx = 560; drawWormCanvas(c, wx, 720, 7, lt * .4);
+    drawBookCanvas(c, wx, 640, 5.5, lt);
+    h2(S.type.name, 920, 120);
+    let y = para(S.type.line, 1030, ap(.7, 1.2), 40, 5);
+    let x = L; y += 20;
+    S.type.traits.forEach((tr, i) => { c.font = `500 30px ${MONO}`; const w = c.measureText(tr).width + 48; if (x + w > W - L) { x = L; y += 80; } c.globalAlpha = ap(1 + i * .2); c.strokeStyle = fg; c.lineWidth = 2.5; roundRect(c, x, y, w, 58, 29); c.stroke(); c.fillStyle = fg; c.fillText(tr, x + 24, y + 39); x += w + 18; });
+    c.globalAlpha = 1;
+  } else if (name === "passport") {
+    kicker("Your passport", 330);
+    const bw2 = 760, bh = 1115, bx = (W - bw2) / 2, by = 400;
+    // the open spread
+    c.save(); c.shadowColor = "rgba(0,0,0,.45)"; c.shadowBlur = 40; c.shadowOffsetY = 16; roundRect(c, bx, by, bw2, bh, 20); c.fillStyle = "#f3ead6"; c.fill(); c.restore();
+    c.save(); roundRect(c, bx, by, bw2, bh, 20); c.clip();
+    c.strokeStyle = "#c9d8cf"; c.lineWidth = 1.5;
+    for (let j = 0; j < 36; j++) { c.beginPath(); for (let x = 0; x <= bw2; x += 12) { const y = by + 70 + j * 30 + Math.sin(x / 50 + j * .7) * 14; x ? c.lineTo(bx + x, y) : c.moveTo(bx + x, y); } c.stroke(); }
+    const gr = c.createLinearGradient(0, by + bh / 2 - 30, 0, by + bh / 2 + 30); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(.5, "rgba(0,0,0,.28)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = gr; c.fillRect(bx, by + bh / 2 - 30, bw2, 60);
+    c.fillStyle = "#8a7c62"; c.font = `500 22px ${MONO}`;
+    [0, 1].forEach(p => { c.fillText("VISAS · ENTRIES", bx + 34, by + p * bh / 2 + 46); c.textAlign = "right"; c.fillText("PAGE " + String(7 + p).padStart(2, "0"), bx + bw2 - 34, by + p * bh / 2 + 46); c.textAlign = "left"; });
+    // stamps on two pages
+    const sp = A.sprites, n = sp.length, topN = Math.ceil(n / 2);
+    [[0, sp.slice(0, topN)], [1, sp.slice(topN)]].forEach(([p, list]) => {
+      const m = list.length; if (!m) return;
+      const cols = m === 1 ? 1 : Math.min(m, Math.ceil(Math.sqrt(m * 1.5))), rows = Math.ceil(m / cols);
+      const cw = (bw2 - 50) / cols, ch = (bh / 2 - 90) / rows, size = Math.min(cw * 1.02, ch * 1.3, 330);
+      list.forEach((s, q) => {
+        const idx = p ? topN + q : q, col = q % cols, row = Math.floor(q / cols), inLast = m - (rows - 1) * cols, shift = row === rows - 1 ? (cols - inLast) * cw / 2 : 0;
+        const pr = clamp01((lt - 2.2 - idx * A.step) / .3); if (!pr) return;
+        const r1 = Math.sin(idx * 127.1 + 311.7) * 43758.5453, rr = r1 - Math.floor(r1);
+        const x = bx + 25 + shift + cw * (col + .5), y = by + p * bh / 2 + 70 + ch * (row + .5), sc = (size / s.base) * (s.badge ? .95 : 1) * (1 + .7 * (1 - easeOut(pr)));
+        c.save(); c.globalAlpha = .92 * pr; c.translate(x, y); c.rotate((rr - .5) * .5); c.scale(sc, sc); c.drawImage(s.img, -s.side / 2, -s.side / 2); c.restore();
+      });
+    });
+    c.restore();
+    // the cover swings open over the first 1.6 s
+    const open = easeOut((lt - .6) / 1.2);
+    if (open < 1) {
+      const cwid = bw2 * (1 - open);
+      c.save(); c.translate(bx, by); c.scale(Math.max(.001, cwid / bw2), 1);
+      roundRect(c, 0, 0, bw2, bh, 22); c.fillStyle = "#5a1a22"; c.fill();
+      c.strokeStyle = "rgba(217,180,90,.35)"; c.lineWidth = 2; roundRect(c, 24, 24, bw2 - 48, bh - 48, 14); c.stroke();
+      c.fillStyle = "#d9b45a"; c.textAlign = "center"; c.font = `400 32px ${SERIF}`; c.fillText("REPUBLIC OF READERS", bw2 / 2, 200);
+      c.strokeStyle = "#d9b45a"; c.lineWidth = 5; c.beginPath(); c.arc(bw2 / 2, 500, 120, 0, 7); c.stroke(); c.beginPath(); c.ellipse(bw2 / 2, 500, 50, 120, 0, 0, 7); c.stroke(); c.beginPath(); c.moveTo(bw2 / 2 - 120, 500); c.lineTo(bw2 / 2 + 120, 500); c.stroke();
+      c.font = `400 66px ${SERIF}`; c.fillText("LITERARY", bw2 / 2, 830); c.fillText("PASSPORT", bw2 / 2, 915); c.font = `400 28px ${SERIF}`; c.fillText("2026", bw2 / 2, 990);
+      c.restore(); c.textAlign = "left";
+    }
+    T(`${S.countries.length} entry stamps${S.badges.length ? ` · ${S.badges.length} badges` : ""} · ${S.J.length} books`, W / 2, by + bh + 90, `400 38px ${SANS}`, fg, ap(1.4), "center");
+  } else if (name === "outro") {
+    T("LITERARY VOYAGE · 2026", L, 560, `500 31px ${MONO}`, "#f2b14c", ap(0));
+    h2("My year in books", 680, 96);
+    const wx = 140 + 760 * easeOut(lt / 2.6);
+    c.fillStyle = "rgba(169,223,134,.75)"; for (let x = L; x < wx - 60; x += 26) { c.beginPath(); c.arc(x, 790 + Math.sin(x / 70) * 14, 5, 0, 7); c.fill(); }
+    drawWormCanvas(c, wx, 790 + Math.sin(wx / 70) * 14, 3.2, lt);
+    [[S.countries.length, "countries"], [S.J.length, "books"], [S.pages, "pages"], [Math.round(S.km), "km crawled"]].forEach(([v, l], i) => {
+      const x = L + (i % 2) * 460, y = 980 + Math.floor(i / 2) * 190, a = ap(.6 + i * .2);
+      T(Math.round(v).toLocaleString("en-US"), x, y, `400 96px ${SERIF}`, i ? fg : "#f2b14c", a); T(l.toUpperCase(), x, y + 52, `500 30px ${MONO}`, fg, a * .75);
+    });
+    T(S.type.name, L, 1460, `400 ${fitSize(S.type.name, MAXW, 76)}px ${SERIF}`, "#f2b14c", ap(1.4));
+    T("Good books take time. Read on in 2027.", W / 2, 1780, `500 30px ${MONO}`, fg, ap(1.8) * .8, "center");
+  }
+  c.globalAlpha = 1;
+}
+function drawBookCanvas(c, x, y, s, t) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.fillStyle = "#b9553f"; roundRect(c, -6.6, -4.6, 13.2, 9.2, 1); c.fill();
+  c.fillStyle = "#f4ead5"; c.fillRect(-5.8, -3.8, 5.6, 7.6); c.fillRect(.2, -3.8, 5.6, 7.6);
+  const f = Math.cos(((t % 1.1) / 1.1) * Math.PI); c.fillStyle = "#fffaf0"; c.fillRect(.2, -3.8, 5.6 * f, 7.6);
+  c.restore();
+}
+
+let previewRAF = null;
+function playPreview(cv, S, A) {
+  cancelAnimationFrame(previewRAF);
+  const c = cv.getContext("2d"), t0 = performance.now();
+  const loop = now => {
+    if (!cv.isConnected) return;
+    const t = ((now - t0) / 1000) % (A.dur + 1);
+    drawStory(c, S, A, t);
+    previewRAF = requestAnimationFrame(loop);
+  };
+  if (reduce) drawStory(c, S, A, A.dur - .1); else previewRAF = requestAnimationFrame(loop);
+}
+
+function videoType() {
+  if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return null;
+  const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  return types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) || null;
+}
+const REC = { cancel: false, worm: null, lastLine: -1 };
+const REC_LINES = ["Your bookworm is crawling…", "Turning the pages…", "Stamping your passport…", "Counting every word…", "Crossing borders…", "Almost at the last chapter…"];
+function recShow(dur) {
+  REC.cancel = false; REC.lastLine = -1;
+  const box = document.getElementById("rec"); box.hidden = false;
+  const sv = d3.select("#rec-worm"); sv.selectAll("*").remove();
+  for (let x = 20; x <= 320; x += 14) sv.append("circle").attr("cx", x).attr("cy", 58).attr("r", 2.6).attr("fill", "rgba(255,255,255,.22)");
+  sv.append("g").attr("id", "rec-dots");
+  if (REC.worm) WORMS.splice(WORMS.indexOf(REC.worm), 1);
+  REC.worm = new Worm(sv.append("g"), { size: 2 }); WORMS.push(REC.worm);
+  REC.worm.placeAt([40, 58], [320, 58]);
+  recProgress(0, dur);
+  document.getElementById("rec-x").onclick = e => { e.stopPropagation(); REC.cancel = true; };
+}
+function recProgress(p, dur) {
+  const x = 40 + 270 * p;
+  if (REC.worm) { REC.worm.moveTo([x, 58]); REC.worm.reading(p >= 1); }
+  d3.select("#rec-dots").selectAll("circle").data(d3.range(20, Math.max(20, x - 30), 14)).join("circle").attr("cx", d => d).attr("cy", 58).attr("r", 3).attr("fill", "#8fcf6a");
+  document.getElementById("rec-fill").style.width = (p * 100) + "%";
+  const left = Math.max(0, Math.ceil(dur * (1 - p)));
+  document.getElementById("rec-n").textContent = p >= 1 ? "Done!" : `${Math.round(p * 100)}% · about ${left} second${left === 1 ? "" : "s"} left`;
+  const li = p >= 1 ? -2 : Math.min(REC_LINES.length - 1, Math.floor(p * REC_LINES.length));
+  if (li !== REC.lastLine) { REC.lastLine = li; document.getElementById("rec-t").textContent = li === -2 ? "Your video is ready" : REC_LINES[li]; }
+}
+function recHide() { document.getElementById("rec").hidden = true; if (REC.worm) { WORMS.splice(WORMS.indexOf(REC.worm), 1); REC.worm = null; } }
+function recordCardVideo(S, A, actx, onProgress) {
+  return new Promise((resolve, reject) => {
+    let type = videoType();
+    if (!type) return reject(new Error("unsupported"));
+    const cv = document.createElement("canvas"); cv.width = CARD.W; cv.height = CARD.H;
+    const c = cv.getContext("2d");
+    drawStory(c, S, A, 0);
+    const vstream = cv.captureStream(30), chunks = [];
+    let rec = null, music = null;
+    if (actx) {
+      try {
+        const dest = actx.createMediaStreamDestination(), m = actx.createGain();
+        const t0a = actx.currentTime + .15;
+        m.gain.setValueAtTime(0, t0a); m.gain.linearRampToValueAtTime(.6, t0a + 1); m.gain.setValueAtTime(.6, t0a + A.dur - 1.5); m.gain.linearRampToValueAtTime(0, t0a + A.dur);
+        m.connect(dest);
+        scheduleMusic(actx, m, t0a, A.dur);
+        const pp = A.scenes.find(sc => sc[0] === "passport");
+        if (pp) A.sprites.forEach((sp, i) => thump(actx, m, t0a + pp[2] + 2.2 + i * A.step + .22, .5));
+        const vf = A.scenes.find(sc => sc[0] === "voyagefull");
+        if (vf && A.voy) A.voy.ev.forEach(ev => { if (ev.type === "book") { pluck(actx, m, 84, t0a + vf[2] + ev.t0 + .05, .1, 1.4); pluck(actx, m, 91, t0a + vf[2] + ev.t0 + .14, .07, 1.6); } });
+        const tracks = vstream.getVideoTracks().concat(dest.stream.getAudioTracks());
+        const stream = new MediaStream(tracks);
+        const at = ["video/mp4;codecs=avc1,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } });
+        if (at) { rec = new MediaRecorder(stream, { mimeType: at, videoBitsPerSecond: 8000000, audioBitsPerSecond: 128000 }); type = at; music = actx; }
+      } catch (e) { rec = null; }
+    }
+    if (!rec) { try { rec = new MediaRecorder(vstream, { mimeType: type, videoBitsPerSecond: 8000000 }); } catch (e) { return reject(e); } }
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => { if (music) setTimeout(() => { try { music.close(); } catch (e) {} }, 300); resolve({ blob: new Blob(chunks, { type: type.split(";")[0] }), ext: type.includes("mp4") ? "mp4" : "webm", withMusic: !!music }); };
+    rec.onerror = e => reject(e);
+    rec.start(250);
+    const total = A.dur, t0 = performance.now();
+    const tick = now => {
+      const t = (now - t0) / 1000;
+      drawStory(c, S, A, Math.min(t, total - .01));
+      onProgress && onProgress(Math.min(1, t / total));
+      if (REC.cancel) { rec.onstop = () => { if (music) { try { music.close(); } catch (e) {} } reject({ code: "cancelled" }); }; rec.stop(); return; }
+      if (t < total) requestAnimationFrame(tick); else setTimeout(() => rec.stop(), 200);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function arcTextCanvas(o, t, r, fs, font) {
+  o.font = `${fs}px ${font}`;
+  const total = o.measureText(t).width * 1.12, ang = Math.min(total / r, Math.PI * 1.4);
+  let a = -Math.PI / 2 - ang / 2;
+  for (const ch of t) {
+    const wch = o.measureText(ch).width * 1.12 / total * ang;
+    o.save(); o.rotate(a + wch / 2); o.translate(0, -r); o.fillText(ch, 0, 0); o.restore();
+    a += wch;
+  }
+}
+function drawWormCanvas(c, x, y, s, t = 0) {
+  const cols = ["#8fcf6a", "#a9df86"];
+  for (let i = 9; i >= 1; i--) { c.fillStyle = cols[i % 2]; c.strokeStyle = "#3f7a33"; c.lineWidth = 1.5; c.beginPath(); c.arc(x - i * 5.2 * s, y + Math.sin(i * .9 - t * 6) * 1.8 * s, 5 * s * (1 - i / 12 * .5), 0, 7); c.fill(); c.stroke(); }
+  c.fillStyle = "#a3e07e"; c.beginPath(); c.arc(x, y, 6.2 * s, 0, 7); c.fill(); c.stroke();
+  [-2.3, 2.3].forEach(dy => {
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(x + 2.6 * s, y + dy * s, 1.6 * s, 0, 7); c.fill();
+    c.fillStyle = "#1a2430"; c.beginPath(); c.arc(x + 3.3 * s, y + dy * s, .8 * s, 0, 7); c.fill();
+    c.strokeStyle = "#f2b14c"; c.lineWidth = 1.2; c.beginPath(); c.arc(x + 2.6 * s, y + dy * s, 2.2 * s, 0, 7); c.stroke();
+  });
+}
+
+function stampDate(stops) {
+  const s = stops[0];
+  if (s.done && /^Read/.test(s.dates)) { const m = s.dates.match(/([A-Z][a-z]{2})\s+(\d+)/); return m ? m[1].toUpperCase() + " " + m[2] + " · 2026" : "READ · 2026"; }
+  const m = s.dates.match(/([A-Z][a-z]{2})\s*\d+\s*[–-]\s*(?:([A-Z][a-z]{2})\s*)?(\d+)/);
+  if (!m) return "2026";
+  return ((m[2] || m[1]).toUpperCase() + " " + m[3] + " · 2026");
+}
+function drawVoyageCard(S) {
+  const sv = d3.select("#wr-voy"), now = document.getElementById("wr-voy-now");
+  if (!WORLD) return;
+  const J = S.J, pad = [];
+  J.forEach(b => pad.push([b.lon, b.lat], [b.lon - 12, b.lat - 8], [b.lon + 12, b.lat + 8]));
+  const pj = d3.geoMercator().fitExtent([[14, 14], [346, 286]], { type: "MultiPoint", coordinates: pad }), gp = d3.geoPath(pj);
+  const isos = new Set(J.map(b => b.iso)), seen = new Set();
+  const land = sv.append("g").selectAll("path").data(WORLD).join("path").attr("class", "country").attr("d", gp);
+  const coords = J.map(b => [b.lon, b.lat]);
+  sv.append("path").attr("class", "vroute").attr("d", gp({ type: "LineString", coordinates: coords }));
+  const trail = sv.append("path").attr("class", "vtrail");
+  const dots = sv.append("g").selectAll("circle").data(J).join("circle").attr("class", "vdot").attr("r", 3.2).attr("cx", b => pj([b.lon, b.lat])[0]).attr("cy", b => pj([b.lon, b.lat])[1]);
+  if (window._voyWorm) WORMS.splice(WORMS.indexOf(window._voyWorm), 1);
+  const w = window._voyWorm = new Worm(sv.append("g"), { size: .7 }); WORMS.push(w);
+  const p0 = pj(coords[0]), p1 = coords[1] ? pj(coords[1]) : null;
+  w.placeAt(p0, p1);
+  const visit = i => { seen.add(J[i].iso); land.classed("visited", d => seen.has(d.id)); dots.classed("on", (b, k) => k <= i); now.textContent = (i + 1) + " · " + J[i].title + " · " + J[i].country; };
+  visit(0);
+  if (reduce || J.length < 2) { J.forEach((b, i) => visit(i)); return; }
+  // whole route in about 7 seconds, each leg timed by its distance
+  const legs = d3.range(1, J.length).map(i => Math.max(.15, d3.geoDistance(coords[i - 1], coords[i])));
+  const tot = d3.sum(legs), T = 7000, pts = [[coords[0]]];
+  let leg = 1, acc = 0;
+  const t0 = performance.now();
+  const timer = d3.timer(() => {
+    if (!sv.node().isConnected) return timer.stop();
+    const el = performance.now() - t0;
+    while (leg < J.length && el > (acc + legs[leg - 1]) / tot * T) { acc += legs[leg - 1]; visit(leg); leg++; }
+    if (leg >= J.length) { w.moveTo(pj(coords[J.length - 1])); w.reading(true); timer.stop(); return; }
+    const f = (el - acc / tot * T) / (legs[leg - 1] / tot * T), c = d3.geoInterpolate(coords[leg - 1], coords[leg])(Math.min(1, f));
+    w.moveTo(pj(c));
+    const done = coords.slice(0, leg).concat([c]);
+    trail.attr("d", gp({ type: "LineString", coordinates: done }));
+  });
+}
+function drawStamp(layer, defs, c, stops, i, x, y, size, delay) {
+  const rnd = (k, s) => { const v = Math.sin(k * 127.1 + s * 311.7) * 43758.5453; return v - Math.floor(v); };
+  const INKS = ["#b9553f", "#2f6b52", "#2b4a7a", "#7a3a7a", "#8a5a12", "#3d5a80"];
+  const title = stops.map(s => s.title).join(" · ");
+  const shape = ["circle", "rect", "oval"][i % 3];
+  const rot = (rnd(i, 3) - .5) * 30, ink = INKS[i % INKS.length], s = size;
+  const gS = layer.append("g").attr("opacity", 0).attr("transform", `translate(${x},${y}) rotate(${rot}) scale(1.7)`);
+  const st = gS.append("g").attr("filter", "url(#ink)").attr("fill", "none").attr("stroke", ink);
+  const txt = (t, yy, fs, cls = "pp-st") => st.append("text").attr("x", 0).attr("y", yy).attr("text-anchor", "middle").attr("font-size", fs).attr("class", cls).attr("fill", ink).attr("stroke", "none").text(t);
+  const arcText = (t, rx, ry, upper, fs, id) => {
+    const d = upper ? `M${-rx},0 A${rx},${ry} 0 0,1 ${rx},0` : `M${-rx},0 A${rx},${ry} 0 0,0 ${rx},0`;
+    defs.append("path").attr("id", id).attr("d", d);
+    st.append("text").attr("font-size", fs).attr("class", "pp-st").attr("fill", ink).attr("stroke", "none").attr("dy", upper ? 0 : fs * .8)
+      .append("textPath").attr("href", "#" + id).attr("startOffset", "50%").attr("text-anchor", "middle").text(t);
+  };
+  const short = (t, n) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+  const date = stampDate(stops), up = c.toUpperCase();
+  if (shape === "circle") {
+    const r = s / 2;
+    st.append("circle").attr("r", r).attr("stroke-width", 2.6);
+    st.append("circle").attr("r", r - 5).attr("stroke-width", 1.1);
+    st.append("circle").attr("r", r * .5).attr("stroke-width", 1.1);
+    arcText(up, r - 14, r - 14, true, Math.min(r * .2, (r * 2.4) / (up.length * .75)), "pa" + i);
+    arcText(short(title, 26).toUpperCase(), r - 11, r - 11, false, r * .11, "pb" + i);
+    txt("ENTRY", -r * .12, r * .14);
+    txt(date, r * .16, r * .11, "pp-st mono");
+  } else if (shape === "rect") {
+    const w = s * 1.12, h = s * .74;
+    st.append("rect").attr("x", -w / 2).attr("y", -h / 2).attr("width", w).attr("height", h).attr("rx", 7).attr("stroke-width", 2.6);
+    st.append("rect").attr("x", -w / 2 + 4).attr("y", -h / 2 + 4).attr("width", w - 8).attr("height", h - 8).attr("rx", 4).attr("stroke-width", 1);
+    txt(up, -h * .12, Math.min(h * .26, w * .82 / (up.length * .62)));
+    st.append("line").attr("x1", -w * .36).attr("x2", w * .36).attr("y1", -h * .01).attr("y2", -h * .01).attr("stroke-width", .9);
+    const adm = "ADMITTED · " + date, tt = short(title, 30);
+    txt(adm, h * .17, Math.min(h * .1, (w * .86) / (adm.length * .64)), "pp-st mono");
+    txt(tt, h * .34, Math.min(h * .095, (w * .86) / (tt.length * .5)), "pp-st it");
+  } else {
+    const rx = s * .6, ry = s * .42;
+    st.append("ellipse").attr("rx", rx).attr("ry", ry).attr("stroke-width", 2.6);
+    st.append("ellipse").attr("rx", rx - 5).attr("ry", ry - 5).attr("stroke-width", 1);
+    arcText(up, rx - 14, ry - 14, true, Math.min(ry * .26, (rx * 2.2) / (up.length * .75)), "pa" + i);
+    const tt = short(title, 24), dl = "✈ " + date;
+    txt(dl, ry * .12, Math.min(ry * .17, (rx * 1.5) / (dl.length * .64)), "pp-st mono");
+    txt(tt, ry * .44, Math.min(ry * .15, (rx * 1.3) / (tt.length * .5)), "pp-st it");
+  }
+  sfxThump((reduce ? 0 : delay) + 260);
+  gS.transition().delay(reduce ? 0 : delay).duration(reduce ? 0 : 380).ease(d3.easeBackOut.overshoot(1.4))
+    .attr("opacity", .92).attr("transform", `translate(${x},${y}) rotate(${rot}) scale(1)`);
+}
+
+const PP_PER = 4;  // two stamps on each of the two pages
+function drawSpread(S, k, firstDelay) {
+  const sv = d3.select("#pp-page");
+  sv.selectAll("*").remove();
+  const defs = sv.append("defs");
+  const f = defs.append("filter").attr("id", "ink").attr("x", "-15%").attr("y", "-15%").attr("width", "130%").attr("height", "130%");
+  f.append("feTurbulence").attr("type", "fractalNoise").attr("baseFrequency", 0.9).attr("numOctaves", 2).attr("result", "n");
+  f.append("feDisplacementMap").attr("in", "SourceGraphic").attr("in2", "n").attr("scale", 1.8).attr("result", "d");
+  f.append("feTurbulence").attr("type", "fractalNoise").attr("baseFrequency", 1.6).attr("seed", 7).attr("result", "g");
+  f.append("feColorMatrix").attr("in", "g").attr("type", "matrix").attr("values", "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.85").attr("result", "ga");
+  f.append("feComposite").attr("in", "d").attr("in2", "ga").attr("operator", "in");
+  const fold = defs.append("linearGradient").attr("id", "fold").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+  fold.append("stop").attr("offset", "0%").attr("stop-color", "#000").attr("stop-opacity", 0);
+  fold.append("stop").attr("offset", "50%").attr("stop-color", "#000").attr("stop-opacity", .28);
+  fold.append("stop").attr("offset", "100%").attr("stop-color", "#000").attr("stop-opacity", 0);
+
+  [0, 1].forEach(p => {
+    const y0 = p * 220, pg = sv.append("g");
+    pg.append("rect").attr("x", 0).attr("y", y0).attr("width", 300).attr("height", 220).attr("rx", p ? 0 : 8).attr("fill", "#f3ead6");
+    const gu = pg.append("g").attr("fill", "none").attr("stroke", "#c9d8cf").attr("stroke-width", .6).attr("opacity", .9);
+    for (let j = 0; j < 14; j++) {
+      let d = "";
+      for (let x = 0; x <= 300; x += 6) { const yy = y0 + 34 + j * 13 + Math.sin(x / 22 + j * .7 + p) * 6 + Math.sin(x / 9 + j) * 1.5; d += (x ? "L" : "M") + x + "," + yy.toFixed(1); }
+      gu.append("path").attr("d", d);
+    }
+    pg.append("circle").attr("cx", 150).attr("cy", y0 + 120).attr("r", 62).attr("fill", "none").attr("stroke", "#d9cdb0").attr("stroke-dasharray", "2 3");
+    pg.append("text").attr("x", 150).attr("y", y0 + 124).attr("text-anchor", "middle").attr("class", "pp-wm").text("REPUBLIC OF READERS");
+    pg.append("text").attr("x", 14).attr("y", y0 + 20).attr("class", "pp-hd").text("VISAS · ENTRIES");
+    pg.append("text").attr("x", 286).attr("y", y0 + 20).attr("text-anchor", "end").attr("class", "pp-hd").text("PAGE " + String(7 + k * 2 + p).padStart(2, "0"));
+  });
+  sv.insert("rect", ":first-child").attr("width", 300).attr("height", 440).attr("rx", 8).attr("fill", "#f3ead6");
+  sv.append("rect").attr("x", 0).attr("y", 208).attr("width", 300).attr("height", 24).attr("fill", "url(#fold)");
+  sv.append("line").attr("x1", 0).attr("x2", 300).attr("y1", 220).attr("y2", 220).attr("stroke", "#b8ab92").attr("stroke-width", .8);
+
+  const layer = sv.append("g");
+  const C = S.countries.map(c => ({ c })).concat((S.badges || []).map(b => ({ b }))), n = C.length, step = reduce ? 0 : Math.min(520, 9000 / Math.max(1, n));
+  const rnd = (a, b) => { const v = Math.sin(a * 91.7 + b * 47.3) * 43758.5453; return v - Math.floor(v); };
+  const topN = Math.ceil(n / 2);
+  [[0, C.slice(0, topN)], [1, C.slice(topN)]].forEach(([p, list]) => {
+    const m = list.length;
+    if (!m) return;
+    const cols = m === 1 ? 1 : Math.min(m, Math.ceil(Math.sqrt(m * 1.5))), rows = Math.ceil(m / cols);
+    const x0 = 12, y0 = p * 220 + 30, cw = 276 / cols, ch = 182 / rows;
+    const size = Math.min(cw * 1.02, ch * 1.3, 134);
+    list.forEach((c, q) => {
+      const idx = p ? topN + q : q, col = q % cols, row = Math.floor(q / cols);
+      const lastRowCount = m - (rows - 1) * cols, shift = row === rows - 1 ? (cols - lastRowCount) * cw / 2 : 0;
+      const x = x0 + shift + cw * (col + .5) + (rnd(idx, 1) - .5) * cw * .12;
+      const y = y0 + ch * (row + .5) + (rnd(idx, 2) - .5) * ch * .12;
+      drawStamp(layer, defs, c.c, S.J.filter(s => s.country === c.c), idx, x, y, size, firstDelay + idx * step);
+    });
+  });
+}
+
+function drawPassport(S) {
+  const pp = document.getElementById("pp");
+  drawSpread(S, 0, reduce ? 0 : 1500);
+  setTimeout(() => pp.classList.add("open"), reduce ? 0 : 500);
+}
+
+function timelineHTML(S) {
+  const y0 = S.oldest.year, y1 = S.newest.year;
+  return `<div class="line"></div>` + S.J.slice().sort((a, b) => a.year - b.year).map((s, i) => {
+    const x = 4 + (s.year - y0) / ((y1 - y0) || 1) * 92;
+    const lab = (s === S.oldest || s === S.newest) ? `<span class="yr" style="left:${x}%">${s.year}</span>` : "";
+    return `<span class="dot" style="left:${x}%; animation-delay:${.3 + i * .18}s" title="${s.title}, ${s.year}"></span>${lab}`;
+  }).join("");
+}
+
+function drawMiniMap(S) {
+  const m = d3.select("#wr-map");
+  if (!WORLD) return;
+  const pj = d3.geoNaturalEarth1().fitExtent([[4, 4], [356, 186]], { type: "Sphere" });
+  const isos = new Set(S.J.map(s => s.iso));
+  m.selectAll("path").data(WORLD).join("path").attr("d", d3.geoPath(pj))
+    .attr("class", d => "country" + (isos.has(d.id) ? " visited" : ""))
+    .style("opacity", d => isos.has(d.id) ? 0 : 1)
+    .transition().delay((d, i) => isos.has(d.id) ? 400 + [...isos].indexOf(d.id) * 250 : 0).duration(400).style("opacity", 1);
+}
+
+function crawlMini() {
+  const m = d3.select("#wr-worm");
+  if (miniWorm) WORMS.splice(WORMS.indexOf(miniWorm), 1);
+  m.append("line").attr("x1", 10).attr("x2", 350).attr("y1", 60).attr("y2", 60).attr("stroke", "currentColor").attr("stroke-opacity", .25).attr("stroke-dasharray", "1 7").attr("stroke-linecap", "round").attr("stroke-width", 3);
+  miniWorm = new Worm(m.append("g"), { size: 2.2 });
+  WORMS.push(miniWorm);
+  miniWorm.placeAt([60, 60], [340, 60]);
+  if (reduce) return;
+  const t0 = performance.now();
+  const t = d3.timer(() => {
+    if (!m.node().isConnected) return t.stop();
+    const f = Math.min(1, (performance.now() - t0) / 5200);
+    miniWorm.moveTo([60 + 260 * f, 60]);
+    if (f >= 1) { t.stop(); miniWorm.reading(true); }
+  });
+}
+
+function go(i) {
+  slidesPaused = false;
+  slide = Math.max(0, Math.min(SLIDES.length - 1, i));
+  const s = SLIDES[slide];
+  wrCard.style.background = s.bg; wrCard.style.color = s.fg; wrCard.style.setProperty("--cardbg", s.bg);
+  wrBody.innerHTML = s.html;
+  wrBody.querySelectorAll("[data-count]").forEach(el => { fitBig(el, Math.round(+el.dataset.count).toLocaleString("en-US")); countUp(el, +el.dataset.count); });
+  if (s.after) s.after();
+  [...wrBars.children].forEach((b, j) => b.firstChild.style.width = j < slide ? "100%" : "0%");
+  slideStart = performance.now();
+}
+function tick() {
+  if (!wr.classList.contains("open")) return;
+  const f = Math.min(1, (performance.now() - slideStart) / (SLIDES[slide].ms || SLIDE_MS));
+  const bar = wrBars.children[slide];
+  if (bar) bar.firstChild.style.width = (f * 100) + "%";
+  if (f >= 1 && slide < SLIDES.length - 1 && !slidesPaused) go(slide + 1);
+  slideTimer = requestAnimationFrame(tick);
+}
+// ---- music: an original music-box tune and stamp thumps, made by the page (no copyrighted songs) ----
+const AUD = { on: false, ctx: null, master: null, gen: 0, timer: null };
+const ACtor = window.AudioContext || window.webkitAudioContext;
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function pluck(ctx, dest, midi, t, vol, dur = 1.6) {
+  const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain();
+  o.type = "sine"; o.frequency.value = mtof(midi);
+  o2.type = "triangle"; o2.frequency.value = mtof(midi) * 2; g2.gain.value = .12;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(dest);
+  o.start(t); o2.start(t); o.stop(t + dur + .05); o2.stop(t + dur + .05);
+}
+function pad(ctx, dest, midi, t, vol, dur) {
+  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = "triangle"; o.frequency.value = mtof(midi); f.type = "lowpass"; f.frequency.value = 500;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .4); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(f); f.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .05);
+}
+function thump(ctx, dest, t, vol = .5) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + .18);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + .25);
+  const len = Math.floor(ctx.sampleRate * .06), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const nz = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+  nz.buffer = buf; bp.type = "bandpass"; bp.frequency.value = 1600; ng.gain.value = vol * .35;
+  nz.connect(bp); bp.connect(ng); ng.connect(dest); nz.start(t);
+}
+// C – Am – F – G, one chord a bar, a gentle arpeggio on top
+function scheduleMusic(ctx, dest, t0, seconds) {
+  const eighth = 60 / 76 / 2, chords = [[48, [60, 64, 67, 72]], [45, [57, 60, 64, 69]], [41, [57, 60, 65, 69]], [43, [55, 59, 62, 67]]];
+  const pat = [0, 1, 2, 3, 2, 1, 2, 1], tune = [76, null, 74, 72, 74, null, 72, 69, 72, null, 69, 67, 71, null, 74, null];
+  const steps = Math.floor(seconds / eighth);
+  for (let i = 0; i < steps; i++) {
+    const t = t0 + i * eighth, bar = Math.floor(i / 8), ch = chords[bar % 4], step = i % 8;
+    pluck(ctx, dest, ch[1][pat[step]], t, step === 0 ? .16 : .1, 1.3);
+    if (step === 0) pad(ctx, dest, ch[0], t, .07, eighth * 8.5);
+    if (step % 4 === 0 && bar % 2 === 1) { const m = tune[(Math.floor(i / 4)) % tune.length]; if (m) pluck(ctx, dest, m, t + .002, .12, 2.2); }
+  }
+}
+function musicStart() {
+  if (!ACtor) return false;
+  if (!AUD.ctx) AUD.ctx = new ACtor();
+  const ctx = AUD.ctx; ctx.resume && ctx.resume();
+  const gen = ++AUD.gen;
+  const m = AUD.master = ctx.createGain(); m.gain.setValueAtTime(0, ctx.currentTime); m.gain.linearRampToValueAtTime(.55, ctx.currentTime + 1.2); m.connect(ctx.destination);
+  let next = ctx.currentTime + .1;
+  const chunk = () => { if (gen !== AUD.gen) return; scheduleMusic(ctx, m, next, 24); next += 24; AUD.timer = setTimeout(chunk, 21000); };
+  chunk();
+  return true;
+}
+function musicStop() {
+  AUD.gen++; clearTimeout(AUD.timer);
+  const m = AUD.master, ctx = AUD.ctx;
+  if (m && ctx) { m.gain.cancelScheduledValues(ctx.currentTime); m.gain.setValueAtTime(m.gain.value, ctx.currentTime); m.gain.linearRampToValueAtTime(0, ctx.currentTime + .4); setTimeout(() => { try { m.disconnect(); } catch (e) {} }, 500); }
+  AUD.master = null;
+}
+function sfxThump(delayMs) {
+  if (!AUD.on || !AUD.ctx || !AUD.master) return;
+  const ctx = AUD.ctx, m = AUD.master;
+  thump(ctx, m, ctx.currentTime + delayMs / 1000, .45);
+}
+function setSound(on) {
+  AUD.on = on;
+  const b = document.getElementById("wr-snd");
+  b.textContent = on ? "♪ On" : "♪ Off"; b.setAttribute("aria-pressed", on ? "true" : "false");
+  b.setAttribute("aria-label", on ? "Turn music off" : "Turn music on");
+  if (on && wr.classList.contains("open")) { if (!musicStart()) { AUD.on = false; b.hidden = true; } }
+  else musicStop();
+}
+
+function openSummary() {
+  if (!STOPS.some(s => s.done)) { toast("Add a book first, then your year in books appears."); return; }
+  SLIDES = buildSlides(yearStats());
+  wrBars.innerHTML = SLIDES.map(() => "<span><i></i></span>").join("");
+  wr.classList.add("open");
+  go(0);
+  cancelAnimationFrame(slideTimer);
+  if (!reduce) slideTimer = requestAnimationFrame(tick);
+  document.getElementById("wr-x").focus();
+  if (AUD.on) musicStart();
+}
+function closeSummary() { REC.cancel = true; wr.classList.remove("open"); cancelAnimationFrame(slideTimer); musicStop(); document.getElementById("sumbtn").focus(); }
+document.getElementById("wr-x").onclick = closeSummary;
+document.getElementById("wr-snd").onclick = e => { e.stopPropagation(); setSound(!AUD.on); };
+if (!ACtor) document.getElementById("wr-snd").hidden = true;
+document.getElementById("wr-next").onclick = () => go(slide + 1);
+document.getElementById("wr-prev").onclick = () => go(slide - 1);
+document.getElementById("sumbtn").onclick = openSummary;
+document.getElementById("voybtn").onclick = () => { if (!STOPS.some(s => s.done)) { toast("Add a book first."); return; } window._pendingKind = "voyage"; openSummary(); go(SLIDES.length - 1); pauseSlides(); };
+document.addEventListener("keydown", e => {
+  if (!wr.classList.contains("open")) return;
+  if (e.key === "Escape") closeSummary();
+  if (e.key === "ArrowRight") go(slide + 1);
+  if (e.key === "ArrowLeft") go(slide - 1);
+});
+
+// ---- add books: type, scan, import ----
+// ---- book lookup without AI: Open Library for the book, Wikidata for where it's set ----
+const SAMPLE = { standalone: true };
+const addStatus = document.getElementById("add-status"), addResults = document.getElementById("add-results");
+const esc = t => String(t == null ? "" : t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function setStatus(t, err) { addStatus.textContent = t; addStatus.classList.toggle("err", !!err); }
+const COUNTRY_FIX = { "People's Republic of China": "China", "United States of America": "United States", "Kingdom of the Netherlands": "Netherlands", "Kingdom of Denmark": "Denmark", "Russian Federation": "Russia", "Republic of Ireland": "Ireland", "State of Palestine": "Palestine", "Czech Republic": "Czechia" };
+const CONT_FIX = { "Australia": "Oceania", "Insular Oceania": "Oceania", "Oceania": "Oceania", "Europe": "Europe", "Asia": "Asia", "Africa": "Africa", "North America": "North America", "South America": "South America" };
+const fixCountry = n => COUNTRY_FIX[n] || n;
+function genreFrom(subjects = []) {
+  const s = subjects.join(" | ").toLowerCase();
+  const rules = [["science fiction", "Science fiction"], ["fantasy", "Fantasy"], ["horror", "Horror"], ["detective", "Mystery & crime"], ["mystery", "Mystery & crime"], ["crime", "Mystery & crime"], ["thriller", "Thriller"], ["romance", "Romance"], ["love stories", "Romance"], ["satire", "Satire"], ["humor", "Satire"], ["war", "War fiction"], ["historical", "Historical fiction"], ["psycholog", "Psychological fiction"], ["short stories", "Short stories"], ["poetry", "Poetry"], ["autobiography", "Memoir"], ["memoir", "Memoir"], ["biography", "Memoir"], ["juvenile", "Young adult"], ["young adult", "Young adult"], ["fiction", "Literary fiction"], ["novel", "Literary fiction"]];
+  for (const [k, g] of rules) if (s.includes(k)) return g;
+  return subjects.length ? "Nonfiction" : "Literary fiction";
+}
+async function getJSON(url, ms = 12000) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error("http " + r.status); return await r.json(); }
+  finally { clearTimeout(tm); }
+}
+const OL_FIELDS = "key,title,author_name,first_publish_year,number_of_pages_median,subject,place";
+async function olSearch(params, limit = 3) {
+  const j = await getJSON(`https://openlibrary.org/search.json?${params}&limit=${limit}&fields=${OL_FIELDS}`);
+  return (j.docs || []).filter(d => d.title);
+}
+const pt = s => { const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(s || ""); return m ? [+m[1], +m[2]] : null; };
+function centroidOf(iso) {
+  const f = WORLD && WORLD.find(x => x.id === iso);
+  return f ? d3.geoCentroid(f) : null;
+}
+// where is the story set? (or, for imaginary worlds, where did the author live?)
+async function wikiPlace(title, author) {
+  const last = (author || "").split(/[ ,]+/).filter(Boolean).pop() || "";
+  const t = title.replace(/"/g, '\\"');
+  const q = `SELECT ?placeLabel ?pcoord ?countryLabel ?ciso ?contLabel ?capc ?acLabel ?aiso ?acontLabel ?acap ?bcLabel ?biso ?bcontLabel ?bcap WHERE {
+  ?work rdfs:label "${t}"@en ; wdt:P50 ?author .
+  ${last ? `?author rdfs:label ?al . FILTER(LANG(?al) = "en" && CONTAINS(LCASE(?al), "${last.toLowerCase().replace(/"/g, "")}"))` : ""}
+  OPTIONAL { ?work wdt:P840 ?place . OPTIONAL { ?place wdt:P625 ?pcoord }
+    OPTIONAL { ?place wdt:P17 ?country . ?country wdt:P299 ?ciso . OPTIONAL { ?country wdt:P30 ?cont } OPTIONAL { ?country wdt:P36/wdt:P625 ?capc } } }
+  OPTIONAL { ?author wdt:P27 ?ac . ?ac wdt:P299 ?aiso . OPTIONAL { ?ac wdt:P30 ?acont } OPTIONAL { ?ac wdt:P36/wdt:P625 ?acap } }
+  OPTIONAL { ?author wdt:P19/wdt:P17 ?bc . ?bc wdt:P299 ?biso . OPTIONAL { ?bc wdt:P30 ?bcont } OPTIONAL { ?bc wdt:P36/wdt:P625 ?bcap } }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+} LIMIT 40`;
+  let rows = [];
+  try { rows = (await getJSON("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q), 15000)).results.bindings; } catch (e) { return null; }
+  const v = (r, k) => r[k] && r[k].value;
+  const set = rows.find(r => v(r, "ciso") && v(r, "pcoord")) || rows.find(r => v(r, "ciso"));
+  if (set) {
+    const iso = v(set, "ciso").padStart(3, "0"), country = fixCountry(v(set, "countryLabel"));
+    const placeName = v(set, "placeLabel"), isCountry = placeName === v(set, "countryLabel");
+    const c = (!isCountry && pt(v(set, "pcoord"))) || pt(v(set, "capc")) || centroidOf(iso);
+    return { country, iso, continent: CONT_FIX[v(set, "contLabel")] || "", city: isCountry ? country : placeName, lon: c && c[0], lat: c && c[1], basis: "setting" };
+  }
+  const au = rows.find(r => v(r, "aiso")) || rows.find(r => v(r, "biso"));
+  if (au) {
+    const a = v(au, "aiso") ? "a" : "b", iso = v(au, a + "iso").padStart(3, "0"), country = fixCountry(v(au, a === "a" ? "acLabel" : "bcLabel"));
+    const c = pt(v(au, a === "a" ? "acap" : "bcap")) || centroidOf(iso);
+    return { country, iso, continent: CONT_FIX[v(au, a + "contLabel")] || "", city: country, lon: c && c[0], lat: c && c[1], basis: "author" };
+  }
+  return null;
+}
+// last resort: Open Library's "places" tag, matched against country names
+function olPlace(doc) {
+  if (!WORLD || !doc.place) return null;
+  for (const p of doc.place) {
+    const low = p.toLowerCase();
+    const f = WORLD.find(x => x.properties && x.properties.name && low.includes(x.properties.name.toLowerCase()));
+    if (f) { const c = d3.geoCentroid(f); return { country: fixCountry(f.properties.name), iso: f.id, continent: "", city: p.replace(/\s*\(.*\)/, ""), lon: c[0], lat: c[1], basis: "setting" }; }
+  }
+  return null;
+}
+async function describe(doc) {
+  try {
+    const w = await getJSON("https://openlibrary.org" + doc.key + ".json", 8000);
+    let d = typeof w.description === "string" ? w.description : w.description && w.description.value;
+    if (!d) return "";
+    d = d.replace(/\s+/g, " ").replace(/\[.*?\]\(.*?\)/g, "").trim();
+    const m = d.match(/^(.{40,220}?[.!?])(\s|$)/); return m ? m[1] : d.slice(0, 200) + "…";
+  } catch (e) { return ""; }
+}
+async function toCandidate(doc, withBlurb) {
+  const author = (doc.author_name || [])[0] || "Unknown";
+  const place = (await wikiPlace(doc.title, author)) || olPlace(doc);
+  return Object.assign({ title: doc.title, author, year: doc.first_publish_year || "", pages: doc.number_of_pages_median || 250, genre: genreFrom(doc.subject), blurb: withBlurb ? await describe(doc) : "" },
+    place || { country: null });
+}
+async function lookupCandidates(q) {
+  const docs = await olSearch("q=" + encodeURIComponent(q), 3);
+  return Promise.all(docs.map(d => toCandidate(d, true)));
+}
+async function lookupISBN(isbn) {
+  const docs = await olSearch("isbn=" + encodeURIComponent(isbn), 1);
+  return Promise.all(docs.map(d => toCandidate(d, true)));
+}
+async function lookupMany(part) {
+  // part: [{title, author}] → [{i, ...candidate}] ; three at a time to stay polite to the free services
+  const out = []; let k = 0;
+  const worker = async () => {
+    while (k < part.length) {
+      const i = k++, b = part[i];
+      try {
+        const docs = await olSearch("title=" + encodeURIComponent(b.title) + (b.author ? "&author=" + encodeURIComponent(b.author) : ""), 1);
+        const doc = docs[0] || { title: b.title, author_name: b.author ? [b.author] : [], key: "" };
+        const cand = await toCandidate(doc, false);
+        out.push(Object.assign({ i }, cand));
+      } catch (e) {}
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  return out;
+}
+// barcode → ISBN, using the phone's own detector or a small library
+async function readBarcode(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    if ("BarcodeDetector" in window) {
+      try {
+        const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a"] });
+        const img = await createImageBitmap(file); const codes = await det.detect(img);
+        if (codes.length) return codes[0].rawValue;
+      } catch (e) {}
+    }
+    if (window.ZXing) {
+      const reader = new ZXing.BrowserMultiFormatReader();
+      const res = await reader.decodeFromImageUrl(url);
+      return res && res.getText();
+    }
+    return null;
+  } catch (e) { return null; } finally { URL.revokeObjectURL(url); }
+}
+
+document.querySelectorAll("#addbox .tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll("#addbox .tab").forEach(x => x.setAttribute("aria-selected", x === t ? "true" : "false"));
+  ["type", "scan", "paste", "import"].forEach(p => document.getElementById("pane-" + p).hidden = p !== t.dataset.pane);
+  addResults.innerHTML = ""; setStatus("");
+});
+
+const GENRE_LIST = "Literary fiction, Psychological fiction, Romance, Satire, Historical fiction, War fiction, Mystery & crime, Thriller, Science fiction, Fantasy, Horror, Young adult, Short stories, Poetry, Memoir, Nonfiction";
+const FIELDS = `"title", "author", "year" (first publication, number), "pages" (typical English edition, number), "genre" (one of: ${GENRE_LIST}), "country" (English short name of the country where the story is mainly set), "iso" (that country's ISO 3166-1 numeric code as a 3-digit string with leading zeros, e.g. "076"), "continent" (one of: Africa, Asia, Europe, North America, South America, Oceania), "city" (main city or region of the setting; if the place is invented, the real place it is based on, written like "Roulettenburg (Wiesbaden)"), "lat" and "lon" (numbers for that city), "blurb" (one or two plain sentences about the story, no ending spoilers)`;
+const NULL_RULE = `Also include "basis": "setting" when the country is where the story takes place. If the story is set in an imaginary world with no real-world model (e.g. Narnia, Middle-earth), or isn't tied to any one place, use instead the country where the author lived when writing it, with "city" as the author's home city then and "basis": "author". Never leave "country" empty.`;
+
+function errText(e) {
+  const c = e && e.code;
+  if (c === "not_granted" || c === "sampling_disabled" || c === "capability_disabled" || c === "not_declared") return "Book lookup isn't allowed in this view.";
+  if (c === "rate_limited") return "Too many lookups just now. Try again in a minute.";
+  if (c === "image_rejected") return "That photo couldn't be read. Try a sharper photo of the barcode or cover.";
+  if (c === "images_unavailable") return "Photos can't be sent from this view. Try typing the title instead.";
+  if (c === "invalid_json" || c === "empty_completion") return "Couldn't match that. Try the full title, or add the author.";
+  return "Something went wrong. Try again.";
+}
+function toStop(b, extra = {}) {
+  const pages = Math.max(20, Math.round(+extra.pages || +b.pages || 250));
+  return {
+    country: String(b.country), iso: String(b.iso || "").padStart(3, "0"), continent: String(b.continent || ""), city: String(b.city || b.country),
+    lat: +b.lat, lon: +b.lon, title: String(extra.title || b.title), author: String(extra.author || b.author || "Unknown"),
+    year: +extra.year || +b.year || 2000, pages, genre: String(b.genre || "Fiction"), words: Math.round(pages * WORDS_PER_PAGE / 1000) * 1000,
+    dates: extra.dates || "Read", done: true, added: true, blurb: String(b.blurb || ""), basis: b.basis === "author" ? "author" : "setting", id: ""
+  };
+}
+function withId(st) { st.id = bookId(st); return st; }
+function valid(b) { return b && b.country && isFinite(+b.lat) && isFinite(+b.lon) && b.title; }
+
+function countryOptions() {
+  if (!WORLD) return "";
+  return WORLD.filter(f => f.properties && f.properties.name).map(f => [fixCountry(f.properties.name), f.id]).sort((a, b) => a[0].localeCompare(b[0])).map(([n, id]) => `<option value="${id}">${esc(n)}</option>`).join("");
+}
+function showCandidates(cands) {
+  addResults.innerHTML = "";
+  if (!cands.length) { setStatus("No match found. Try the full title, or add the author.", true); return; }
+  setStatus(cands.length > 1 ? "Which one did you read?" : "Is this the one?");
+  cands.forEach(b => {
+    const ok = valid(b);
+    const el = document.createElement("div"); el.className = "cand";
+    el.innerHTML = `<div><div class="ct">${esc(b.title)}</div>
+      <div class="cm">${esc(b.author)}${b.year ? ", " + esc(b.year) : ""} · ${ok ? (b.basis === "author" ? "stamped in " + esc(b.country) + ", where the author lived" : esc(b.country) + " (" + esc(b.city) + ")") : "setting not found: pick the country"} · ${esc(b.genre)} · ~${esc(b.pages)} pages</div>
+      ${b.blurb ? `<div class="cb">${esc(b.blurb)}</div>` : ""}</div>
+      ${ok ? `<button type="button">+ Add to map</button>` : `<div class="pick"><label class="sr" for="pk${cands.indexOf(b)}">Country</label><select id="pk${cands.indexOf(b)}"><option value="">Where is it set?</option>${countryOptions()}</select><button type="button">+ Add</button></div>`}`;
+    if (!ok) el.querySelector("button").onclick = () => {
+      const sel = el.querySelector("select"), f = WORLD && WORLD.find(x => x.id === sel.value);
+      if (!f) { sel.focus(); return; }
+      const c = d3.geoCentroid(f);
+      Object.assign(b, { country: fixCountry(f.properties.name), iso: f.id, continent: "", city: fixCountry(f.properties.name), lon: c[0], lat: c[1], basis: "setting" });
+      addBooks([withId(toStop(b))]); addResults.innerHTML = ""; setStatus("Added " + b.title + ". Watch the bookworm go.");
+    };
+    if (ok) el.querySelector("button").onclick = () => { addBooks([withId(toStop(b))]); addResults.innerHTML = ""; setStatus("Added " + b.title + ". Watch the bookworm go."); };
+    addResults.append(el);
+  });
+}
+
+document.getElementById("f-type").onsubmit = async e => {
+  e.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  if (!SAMPLE) { setStatus("Book lookup needs Claude. Open this page in the Claude app or on claude.ai.", true); return; }
+  const btn = e.target.querySelector(".go"); btn.disabled = true;
+  addResults.innerHTML = ""; setStatus("Looking it up…");
+  try {
+    showCandidates(await lookupCandidates(q));
+  } catch (err) { setStatus("Couldn't reach the book library. Check your internet connection and try again.", true); }
+  btn.disabled = false;
+};
+
+document.getElementById("f-scan").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (!SAMPLE) { setStatus("Book lookup needs Claude. Open this page in the Claude app or on claude.ai.", true); return; }
+  addResults.innerHTML = ""; setStatus("Reading the barcode…");
+  try {
+    const code = await readBarcode(f);
+    if (!code) { setStatus("Couldn't read a barcode in that photo. Try a closer, sharper photo of the barcode on the back, or type the title.", true); return; }
+    setStatus("Found ISBN " + code + ". Looking it up…");
+    const c = await lookupISBN(code);
+    if (!c.length) { setStatus("That ISBN isn't in the book library yet. Try typing the title instead.", true); return; }
+    showCandidates(c);
+  } catch (err) { setStatus("Couldn't reach the book library. Check your internet connection and try again.", true); }
+};
+
+function parseCSV(text) {
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(cur); cur = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// ---- many books at once: shared by Paste and Import ----
+const BATCH = 25;
+async function placeMany(books, label) {
+  // books: [{title, author, date?, pages?, year?}] → review list items
+  const items = []; let missed = 0;
+  for (let k = 0; k < books.length; k += BATCH) {
+    const part = books.slice(k, k + BATCH);
+    setStatus(`${label} ${k + 1}–${k + part.length} of ${books.length}…`);
+    const list = part.map((b, i) => `${i}. ${b.title}${b.author ? " — " + b.author : ""}`).join("\n");
+    let r;
+    try { r = { books: await lookupMany(part) }; }
+    catch (err) { missed += part.length; continue; }
+    const found = (r && r.books || []).filter(x => part[+x.i] && valid(x));
+    missed += part.length - found.length;
+    found.forEach(x => {
+      const b = part[+x.i], dt = b.date ? new Date(b.date.replace(/\//g, "-")) : null, okd = dt && !isNaN(dt);
+      items.push({ stop: withId(toStop(x, { title: b.title || x.title, author: b.author || x.author, pages: b.pages, year: b.year, dates: okd ? "Read " + MON[dt.getMonth()] + " " + dt.getDate() : "Read" })), sort: okd ? +dt : 0, n: items.length });
+    });
+  }
+  items.sort((a, b) => (a.sort || Infinity) - (b.sort || Infinity) || a.n - b.n);
+  return { items, missed };
+}
+function reviewList(items, missed, note = "") {
+  addResults.innerHTML = "";
+  if (!items.length) { setStatus("None of those books could be placed on the map. Check the spelling, or add the author.", true); return; }
+  setStatus(`${items.length} books ready${missed ? ` · ${missed} couldn't be placed (add those with Type to pick the country)` : ""}${note}. Untick any you don't want.`);
+  items.forEach((it, j) => {
+    const el = document.createElement("label"); el.className = "cand imp";
+    el.innerHTML = `<input type="checkbox" checked data-j="${j}"><div><div class="ct">${esc(it.stop.title)}</div><div class="cm">${esc(it.stop.author)} · ${esc(it.stop.country)} (${it.stop.basis === "author" ? "author's home" : esc(it.stop.city)}) · ${esc(it.stop.genre)} · ${esc(it.stop.dates)}</div></div>`;
+    addResults.append(el);
+  });
+  const go = document.createElement("button"); go.className = "go"; go.type = "button"; go.textContent = `+ Add ${items.length} books to my map`;
+  addResults.append(go);
+  addResults.onchange = () => { const n = addResults.querySelectorAll("input:checked").length; go.textContent = `+ Add ${n} books to my map`; go.disabled = !n; };
+  go.onclick = () => {
+    const pick = [...addResults.querySelectorAll("input:checked")].map(c => items[+c.dataset.j].stop);
+    addBooks(pick); addResults.innerHTML = ""; addResults.onchange = null;
+    setStatus(`Added ${pick.length} books. Watch the bookworm go.`);
+  };
+}
+function notOnMap(books) {
+  const seen = new Set();
+  return books.filter(b => {
+    const key = b.title.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || seen.has(key) || STOPS.some(s => s.title.toLowerCase() === key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+document.getElementById("f-paste").onsubmit = async e => {
+  e.preventDefault();
+  const raw = document.getElementById("pastebox").value;
+  let books = raw.split(/\r?\n/).map(l => l.replace(/^\s*(\d+[.)]|[-*•–])\s*/, "").trim()).filter(Boolean).map(l => {
+    const m = l.split(/\s+(?:—|–|-|by)\s+/i);
+    return m.length > 1 ? { title: m[0].replace(/^["“]|["”]$/g, ""), author: m.slice(1).join(" ") } : { title: l.replace(/^["“]|["”]$/g, ""), author: "" };
+  });
+  const before = books.length;
+  books = notOnMap(books);
+  if (!before) { setStatus("Paste at least one title, one per line.", true); return; }
+  if (!books.length) { setStatus("All of those are already on your map.", true); return; }
+  if (!SAMPLE) { setStatus("Book lookup needs Claude. Open this page in the Claude app or on claude.ai.", true); return; }
+  const btn = e.target.querySelector(".go"); btn.disabled = true;
+  try { const { items, missed } = await placeMany(books, "Placing books"); reviewList(items, missed, before > books.length ? ` · ${before - books.length} already on your map` : ""); }
+  catch (err) { setStatus(errText(err), true); }
+  btn.disabled = false;
+};
+
+document.getElementById("f-csv").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  addResults.innerHTML = "";
+  let rows;
+  try { rows = parseCSV(await f.text()); } catch (err) { setStatus("That file couldn't be read.", true); return; }
+  if (rows.length < 2) { setStatus("That file has no books in it.", true); return; }
+  const hd = rows[0].map(h => h.trim().toLowerCase());
+  const col = re => hd.findIndex(h => re.test(h));
+  const iT = col(/^title$/), iA = col(/^authors?$|^author$/), iS = col(/exclusive shelf|read status/), iD = col(/date read|last date read/), iP = col(/number of pages|^pages$/), iY = col(/original publication year|year published/);
+  if (iT < 0) { setStatus("Couldn't find a Title column. Is this a Goodreads or StoryGraph export?", true); return; }
+  let books = rows.slice(1).map(r => ({ title: (r[iT] || "").trim(), author: iA >= 0 ? (r[iA] || "").trim() : "", status: iS >= 0 ? (r[iS] || "").trim().toLowerCase() : "read", date: iD >= 0 ? (r[iD] || "").trim() : "", pages: iP >= 0 ? +r[iP] : 0, year: iY >= 0 ? +r[iY] : 0 }))
+    .filter(b => b.title && b.status === "read");
+  let note = "";
+  if (document.getElementById("only2026").checked) {
+    const in2026 = books.filter(b => /2026/.test(b.date));
+    if (in2026.length) books = in2026; else note = " · none dated 2026, so all read books are shown";
+  }
+  books = notOnMap(books);
+  if (!books.length) { setStatus("No new read books found in that file.", true); return; }
+  if (!SAMPLE) { setStatus("Book lookup needs Claude. Open this page in the Claude app or on claude.ai.", true); return; }
+  try { const { items, missed } = await placeMany(books, "Finding where books are set:"); reviewList(items, missed, note); }
+  catch (err) { setStatus(errText(err), true); }
+};
+
+// ---- saving: your account when available, this browser otherwise ----
+let DB = null, BOOKS_COL = null;
+function bookId(b) { return (b.title + "-" + b.author).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120) || ("b" + Date.now()); }
+async function persistAdd(list) {
+  saveAdded();
+  if (!BOOKS_COL) return;
+  for (const b of list) { try { await BOOKS_COL.doc(b.id).set(b); } catch (e) { setStatus("Saved on this device only. Couldn't reach your account just now.", true); return; } }
+}
+async function persistRemove(b) {
+  saveAdded();
+  if (BOOKS_COL && b && b.id) { try { await BOOKS_COL.doc(b.id).delete(); } catch (e) {} }
+}
+(function initDB(tries) {
+  try {
+    if (window.claude && window.claude.use) {
+      Promise.all([window.claude.use("db"), window.claude.use("user")]).then(async ([db, user]) => {
+        if (!db || !user) return;
+        const uid = await user.id();
+        if (!uid) return;
+        DB = db; BOOKS_COL = db.collection("data/users/" + uid);
+        const snap = await BOOKS_COL.limit(1000).get();
+        const meta = snap.docs.find(d => d.id === "_meta");
+        if (meta && meta.data() && typeof meta.data().best === "string") { bestKey = meta.data().best; try { localStorage.setItem(BEST_KEY, bestKey); } catch (e) {} render(); }
+        else if (bestKey) BOOKS_COL.doc("_meta").set({ best: bestKey }).catch(() => {});
+        const saved = snap.docs.map(d => d.data()).filter(b => b && b.title).sort((a, b) => (a.order || 0) - (b.order || 0));
+        const have = new Set(saved.map(b => b.id));
+        // move books from this browser into the account
+        const local = STOPS.filter(s => s.added && !have.has(s.id));
+        for (const b of local) { try { await BOOKS_COL.doc(b.id).set(b); } catch (e) {} }
+        const fresh = saved.filter(b => !STOPS.some(s => s.id === b.id));
+        if (fresh.length) { fresh.forEach(b => STOPS.splice(insertAt(), 0, b)); saveAdded(); refit(); placeTraveler(insertAt() - 1); }
+      }).catch(() => {});
+      return;
+    }
+  } catch (e) { return; }
+  if (tries < 20) setTimeout(() => initDB(tries + 1), 250);
+})(0);
+
+function refit() {
+  projection.fitExtent([[60, 50], [W - 60, H - 40]], fitShape());
+  svg.call(zoom.transform, d3.zoomIdentity);
+  gratPath.attr("d", path(d3.geoGraticule().step([10, 10])()));
+  landG.selectAll("path").attr("d", path);
+  trailG.selectAll("*").remove();
+  render();
+}
+async function addBooks(list) {
+  list = list.filter(b => !STOPS.some(s => s.id && s.id === b.id));
+  if (!list.length) return;
+  runId++; playing = false; playBtn.textContent = "▶ Play the voyage";
+  const first = insertAt();
+  list.forEach((b, i) => { b.order = Date.now() + i; STOPS.splice(insertAt(), 0, b); });
+  persistAdd(list);
+  refit();
+
+  const id = ++runId;
+  for (let j = first; j < first + list.length; j++) {
+    if (id !== runId) return;
+    if (j === 0) { placeTraveler(0); select(0); await readPause(0, id); continue; }
+    if (j === first) placeTraveler(j - 1);
+    const ok = await flyLeg(j, id);
+    if (!ok) return;
+    reached.add(STOPS[j].iso); paintCountries();
+    select(j);
+    await readPause(j, id);
+  }
+  if (id === runId) { runId++; placeTraveler(insertAt() - 1); }
+}
+
+render();
+placeTraveler(Math.max(0, STOPS.map(s => s.done).lastIndexOf(true)));
+sizeStops();
+if (!reduce) d3.timer(() => WORMS.forEach(w => w.draw()));
+if (!reduce && STOPS.length > 1) setTimeout(playVoyage, 800);
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>
