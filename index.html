@@ -107,7 +107,8 @@ ol.legs:not(.open) li:nth-child(n+6) { display: none; }
 .vt-share { border-color: var(--brass); color: var(--brass); margin-left: auto; }
 .vt-stage { position: relative; flex: 1; min-height: 0; aspect-ratio: 9 / 16; max-width: 100%; display: grid; place-items: center; }
 .vt-stage canvas { height: 100%; width: auto; max-width: 100%; border-radius: 14px; display: block; }
-.vt-end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(7,13,22,.72); border-radius: 14px; padding: 20px; }
+.vt-end { width: 100%; max-width: 520px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; animation: vtUp .4s ease-out; }
+@keyframes vtUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .vt-et { font-family: var(--display); font-size: 26px; color: var(--ink); margin-bottom: 6px; text-align: center; }
 .vt-go { height: 50px; padding: 0 22px; border-radius: 14px; border: none; background: var(--brass); color: #1b1408; font-family: var(--mono); font-size: 15px; font-weight: 600; cursor: pointer; }
 .vt-alt { height: 44px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--ink); font-family: var(--mono); font-size: 14px; cursor: pointer; }
@@ -552,14 +553,13 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
     <button class="vt-b" id="vt-x" aria-label="Close">✕</button>
   </div>
   <div class="vt-stage"><canvas id="vt-cv" width="1080" height="1920"></canvas>
-    <div class="vt-end" id="vt-end" hidden>
-      <div class="vt-et">That's your voyage 🐛</div>
-      <button class="vt-go" id="vt-save">Save &amp; share this video</button>
-      <button class="vt-alt" id="vt-again">↺ Watch again</button>
-      <button class="vt-alt" id="vt-year">See your 2026 in books →</button>
-    </div>
   </div>
   <div class="vt-bar"><i id="vt-fill"></i></div>
+  <div class="vt-end" id="vt-end" hidden>
+    <button class="vt-go" id="vt-save">Save &amp; share this video</button>
+    <button class="vt-alt" id="vt-again">↺ Watch again</button>
+    <button class="vt-alt" id="vt-year">See your 2026 in books →</button>
+  </div>
 </div>
 <div class="wr" id="wr" role="dialog" aria-modal="true" aria-label="Your 2026 in books">
   <div class="wr-card" id="wr-card">
@@ -1710,7 +1710,20 @@ function makeSprite(it, i, S, size) {
 function buildVoyage(S) {
   // one stop per country, in the order the reader first got there; books stay in reading order
   const groups = [];
-  S.J.forEach(b => { let g = groups.find(x => x.country === b.country); if (!g) { g = { country: b.country, iso: b.iso, lon: NaN, lat: NaN, books: [] }; groups.push(g); } g.books.push(b); });
+  // follow the reading year month by month; a country can be visited again in a later month
+  const monthOf = b => { let m = null; try { m = bookMonth(b); if (m === null) m = datedMonth(b); } catch (e) {} return m === null || m === undefined ? null : +m; };
+  const withM = S.J.map((b, i) => ({ b, i, m: monthOf(b) }));
+  const byMonth = withM.some(x => x.m !== null);
+  if (byMonth) {
+    // inside a month, books from the same country sit together so the worm doesn't zigzag
+    const firstIn = {}; withM.forEach(x => { const k = x.m + "|" + x.b.country; if (!(k in firstIn)) firstIn[k] = x.i; });
+    withM.sort((a, b) => (a.m === null ? 99 : a.m) - (b.m === null ? 99 : b.m) || firstIn[a.m + "|" + a.b.country] - firstIn[b.m + "|" + b.b.country] || a.i - b.i);
+    withM.forEach(({ b, m }) => {
+      const last = groups[groups.length - 1];
+      if (last && last.country === b.country && last.month === m) last.books.push(b);
+      else groups.push({ country: b.country, iso: b.iso, lon: NaN, lat: NaN, month: m, books: [b] });
+    });
+  } else S.J.forEach(b => { let g = groups.find(x => x.country === b.country); if (!g) { g = { country: b.country, iso: b.iso, lon: NaN, lat: NaN, month: null, books: [] }; groups.push(g); } g.books.push(b); });
   // every stop needs real coordinates, or the film's clock breaks and it ends early
   groups.forEach(g => {
     const b = g.books.find(x => isFinite(+x.lon) && isFinite(+x.lat) && x.lon !== "" && x.lat !== "");
@@ -1723,15 +1736,18 @@ function buildVoyage(S) {
   const ev = []; let t = 2.4;
   const totalBooks = d3.sum(groups, g => g.books.length);
   let per = 1.9; // seconds each book stays on screen
-  const travelOf = (a, b) => Math.min(2.8, 1.4 + d3.geoDistance([a.lon, a.lat], [b.lon, b.lat]) * .6);
+  let tScale = 1;
+  const travelOf = (a, b) => a.country === b.country ? 1.1 : Math.max(.9, tScale * Math.min(2.8, 1.4 + d3.geoDistance([a.lon, a.lat], [b.lon, b.lat]) * .6));
   let est = 2.4 + 4.2 + d3.sum(groups.slice(1), (g, i) => travelOf(groups[i], g)) + totalBooks * per;
   if (est > 72) per = Math.max(1.1, per - (est - 72) / totalBooks);
+  const legsT = d3.sum(groups.slice(1), (g, i) => travelOf(groups[i], g));
+  if (legsT > 70) tScale = 70 / legsT;  // lots of hops: crawl a little quicker between countries
   let n = 0, km = 0;
   groups.forEach((g, gi) => {
     if (gi) { const d = travelOf(groups[gi - 1], g); km += d3.geoDistance([groups[gi - 1].lon, groups[gi - 1].lat], [g.lon, g.lat]) * 6371; ev.push({ type: "travel", gi, t0: t, t1: t + d }); t += d; }
-    g.books.forEach((b, bi) => { n++; const d = per + (bi === 0 ? .35 : 0); ev.push({ type: "book", gi, b, n, km, t0: t, t1: t + d }); t += d; });
+    g.books.forEach((b, bi) => { n++; const d = per + (bi === 0 ? .35 : 0); ev.push({ type: "book", gi, b, n, km, month: g.month, t0: t, t1: t + d }); t += d; });
   });
-  return { groups, ev, dur: t + 4.4, outro: t, totalKm: km };
+  return { groups, ev, dur: t + 4.4, outro: t, totalKm: km, byMonth, nCountries: new Set(groups.map(g => g.country)).size };
 }
 function coverColor(title) { let h = 0; for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ["#b9553f", "#2f6b52", "#2b4a7a", "#7a3a7a", "#8a5a12", "#3d5a80", "#5a1a22", "#1f5f5b"][h % 8]; }
 function wrapLines(c, text, maxW, maxLines) {
@@ -1792,11 +1808,12 @@ function drawVoyageFull(c, S, V, t) {
   order.forEach(i => {
     const g = G[i];
     if (i > reachedG) return;
+    if (G.some((h, j) => j > i && j <= reachedG && h.country === g.country)) return;  // newest visit carries the label
     const p = pj(ll(g)); if (!p || p[0] < -100 || p[0] > W + 100 || p[1] < -100 || p[1] > H + 100) return;
     const isCur = i === reachedG && t < V.outro;
     c.beginPath(); c.arc(p[0], p[1], isCur ? 15 : 11, 0, 7); c.fillStyle = "#7fd1a8"; c.fill();
     if (isCur) { const pulse = (t * 1.2) % 1; c.beginPath(); c.arc(p[0], p[1], 15 + pulse * 30, 0, 7); c.strokeStyle = `rgba(127,209,168,${.6 * (1 - pulse)})`; c.lineWidth = 4; c.stroke(); }
-    const books = g.books.filter(b => V.ev.some(x => x.type === "book" && x.b === b && x.t0 <= t)).length;
+    const books = V.ev.filter(x => x.type === "book" && x.t0 <= t && G[x.gi].country === g.country).length;
     const fs = isCur ? 46 : camZ < 900 ? 26 : 32;
     c.font = `400 ${fs}px ${SERIF}`;
     const label = g.country + (books > 1 ? " ×" + books : ""), w = c.measureText(label).width;
@@ -1823,6 +1840,12 @@ function drawVoyageFull(c, S, V, t) {
   c.fillStyle = "#f2b14c"; c.font = `500 28px ${MONO}`; c.fillText("2026 · BOOKWORM VOYAGE", 60, 125);
   c.fillStyle = "#e9eef4"; c.font = `500 30px ${MONO}`; c.textAlign = "right";
   c.fillText(`${shownBooks}/${S.J.length} books · ${Math.round(shownKm).toLocaleString("en-US")} km`, W - 60, 125); c.textAlign = "left";
+  // which month the bookworm is reading in
+  if (V.byMonth && t >= V.ev[0].t0 && t < V.outro) {
+    const gm = G[e.gi] ? G[e.gi].month : null;
+    const mt = gm === null || gm === undefined ? "UNDATED" : MONTHS_FULL[gm].toUpperCase();
+    c.fillStyle = "#f4f7f2"; c.font = `400 58px ${SERIF}`; c.fillText(mt.charAt(0) + mt.slice(1).toLowerCase(), 60, 205);
+  }
 
   // the book card: the star of each stop
   if (e.type === "book" && t < V.outro) {
@@ -1865,7 +1888,7 @@ function drawVoyageFull(c, S, V, t) {
     c.globalAlpha = a; c.textAlign = "center";
     c.fillStyle = "#f2b14c"; c.font = `500 32px ${MONO}`; c.fillText("LITERARY VOYAGE · 2026", W / 2, 1360);
     c.fillStyle = "#f4f7f2"; fitF("My bookworm voyage", W - 140, 96); c.fillText("My bookworm voyage", W / 2, 1480);
-    c.fillStyle = "#dfe7ee"; fitF(`${S.J.length} books · ${G.length} countries`, W - 160, 40, "400", SANS); c.fillText(`${S.J.length} books · ${G.length} countries`, W / 2, 1560);
+    c.fillStyle = "#dfe7ee"; fitF(`${S.J.length} books · ${V.nCountries || G.length} countries`, W - 160, 40, "400", SANS); c.fillText(`${S.J.length} books · ${V.nCountries || G.length} countries`, W / 2, 1560);
     c.globalAlpha = 1; c.textAlign = "left";
   }
   // closing card over the whole route
@@ -1876,7 +1899,7 @@ function drawVoyageFull(c, S, V, t) {
     c.fillStyle = "#e9eef4"; c.font = `500 30px ${MONO}`; c.fillText("MY BOOKWORM CRAWLED", 80, 1330);
     c.fillStyle = "#f4f7f2"; fitF(Math.round(V.totalKm).toLocaleString("en-US"), W - 160, 180); c.fillText(Math.round(V.totalKm * easeOut((t - V.outro - .6) / 1.6)).toLocaleString("en-US"), 70, 1510);
     c.font = `400 60px ${SERIF}`; c.fillText("kilometres", 80, 1590);
-    c.font = `400 36px ${SANS}`; c.fillStyle = "#dfe7ee"; c.fillText(`${G.length} countries · ${S.J.length} books`, 80, 1660);
+    c.font = `400 36px ${SANS}`; c.fillStyle = "#dfe7ee"; c.fillText(`${V.nCountries || G.length} countries · ${S.J.length} books`, 80, 1660);
     c.font = `500 28px ${MONO}`; c.globalAlpha = a * .8; c.textAlign = "center"; c.fillText("Good books take time. Read on in 2027.", W / 2, 1830);
     c.globalAlpha = 1; c.textAlign = "left";
   }
@@ -2557,7 +2580,7 @@ async function openVoyage() {
 function vtPlay() {
   cancelAnimationFrame(VT.raf);
   const cv = document.getElementById("vt-cv"), c = cv.getContext("2d"), fill = document.getElementById("vt-fill");
-  document.getElementById("vt-end").hidden = true;
+  document.getElementById("vt-end").hidden = true; clearTimeout(VT.endT);
   VT.t0 = performance.now();
   const loop = now => {
     if (document.getElementById("vt").hidden) return;
@@ -2565,12 +2588,12 @@ function vtPlay() {
     drawStory(c, VT.S, VT.A, t);
     fill.style.width = (t / VT.A.dur * 100) + "%";
     if (t < VT.A.dur) VT.raf = requestAnimationFrame(loop);
-    else { document.getElementById("vt-end").hidden = false; musicStop(); }
+    else { VT.endT = setTimeout(() => { if (!document.getElementById("vt").hidden) document.getElementById("vt-end").hidden = false; musicStop(); }, 5000); }
   };
   if (reduce) { drawStory(c, VT.S, VT.A, VT.A.dur - .1); fill.style.width = "100%"; document.getElementById("vt-end").hidden = false; }
   else VT.raf = requestAnimationFrame(loop);
 }
-function closeVoyage() { cancelAnimationFrame(VT.raf); musicStop(); document.getElementById("vt").hidden = true; }
+function closeVoyage() { cancelAnimationFrame(VT.raf); clearTimeout(VT.endT); musicStop(); document.getElementById("vt").hidden = true; }
 document.getElementById("vt-x").onclick = closeVoyage;
 document.getElementById("vt-share").onclick = document.getElementById("vt-save").onclick = () => { closeVoyage(); openVoyageShare(); };
 document.getElementById("vt-again").onclick = () => { if (VT.music && ACtor) musicStart(); vtPlay(); };
