@@ -683,7 +683,7 @@ function render() {
     </div>`;
   document.getElementById("bestbtn").onclick = () => {
     const was = bestKey === d.title.toLowerCase();
-    setBest(was ? "" : d.title); render();
+    setBest(was ? "" : d.title); render(); renderTop3(true);
     toast(was ? "Best book cleared." : "★ " + d.title + " is your best book of 2026.");
   };
   const eb = document.getElementById("editbook");
@@ -705,11 +705,18 @@ function render() {
 }
 
 let t3sel = null;  // book picked by tap, waiting for a spot
+let t3drag = false, t3sig = "";
 const coverBg = t => typeof coverColor === "function" ? coverColor(t) : "#2f6b52";
 function bookByKey(k) { return k ? STOPS.find(s => s.done && s.title.toLowerCase() === k) : null; }
-function renderTop3() {
+const norm2 = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+function renderTop3(force) {
   const shelf = document.getElementById("shelf"); if (!shelf) return;
+  if (t3drag) return;  // never rebuild under a finger mid-drag
   const read = STOPS.filter(s => s.done);
+  // the map re-renders often while the bookworm plays; only rebuild when something here changed (keeps the shelf's scroll too)
+  const sig = read.map(b => b.title).join("|") + "#" + top3.join("|") + "#" + t3sel;
+  if (!force && sig === t3sig) return;
+  t3sig = sig;
   document.getElementById("t3box").hidden = !read.length;
   // drop picks for books no longer on the map
   top3 = top3.map(k => bookByKey(k) ? k : "");
@@ -720,21 +727,23 @@ function renderTop3() {
     if (b) {
       box.innerHTML = `<div class="t3cover" data-title="${esc2(b.title)}" style="background:${coverBg(b.title)}">${esc2(b.title)}</div><div class="t3t">${esc2(b.title)}</div>`;
       const x = document.createElement("button"); x.className = "t3x"; x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Remove " + b.title + " from spot " + (i + 1));
-      x.onclick = e => { e.stopPropagation(); setTop(i, ""); render(); };
+      x.onclick = e => { e.stopPropagation(); setTop(i, ""); render(); renderTop3(true); };
       sl.append(x);
       dragify(box.querySelector(".t3cover"), b.title);
     } else box.innerHTML = `<div class="t3empty">${t3sel ? "Tap to place here" : "Drop a book here"}</div>`;
-    sl.onclick = () => { if (t3sel) { setTop(i, t3sel); t3sel = null; render(); } };
+    sl.onclick = () => { if (t3sel) { setTop(i, t3sel); t3sel = null; render(); renderTop3(true); } };
   });
   const used = new Set(top3.filter(Boolean));
   shelf.innerHTML = "";
-  read.forEach(b => {
+  // A to Z, ignoring "The", "A" and "An" at the start
+  const sortKey = t => norm2(t).replace(/^(the|a|an)\s+/, "");
+  read.slice().sort((a, b) => sortKey(a.title).localeCompare(sortKey(b.title))).forEach(b => {
     const el = document.createElement("div");
     el.className = "bk" + (used.has(b.title.toLowerCase()) ? " used" : "") + (t3sel === b.title ? " sel" : "");
     el.style.background = coverBg(b.title); el.textContent = b.title; el.tabIndex = 0; el.setAttribute("role", "button");
     el.setAttribute("aria-label", b.title + ". Tap, then tap a spot on the podium.");
     el.onclick = () => { t3sel = t3sel === b.title ? null : b.title; renderTop3(); };
-    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.onclick(); } if (["1", "2", "3"].includes(e.key)) { setTop(+e.key - 1, b.title); render(); } };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.onclick(); } if (["1", "2", "3"].includes(e.key)) { setTop(+e.key - 1, b.title); renderTop3(true); } };
     dragify(el, b.title);
     shelf.append(el);
   });
@@ -742,32 +751,43 @@ function renderTop3() {
 }
 // pointer-based dragging works with a mouse and with fingers (the shelf still scrolls sideways)
 function dragify(el, title) {
-  let start = null, ghost = null, hot = null;
-  const slotAt = (x, y) => { const t = document.elementFromPoint(x, y); return t && t.closest ? t.closest(".t3slot") : null; };
-  el.addEventListener("pointerdown", e => { if (e.button > 0) return; start = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
-  el.addEventListener("pointermove", e => {
-    if (!start || e.pointerId !== start.id) return;
-    if (!ghost) {
-      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
-      ghost = document.createElement("div"); ghost.className = "t3ghost"; ghost.style.background = coverBg(title); ghost.textContent = title;
-      document.body.append(ghost); try { el.setPointerCapture(e.pointerId); } catch (err) {}
-    }
-    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
-    const s2 = slotAt(e.clientX, e.clientY);
-    if (s2 !== hot) { if (hot) hot.classList.remove("hot"); hot = s2; if (hot) hot.classList.add("hot"); }
-    e.preventDefault();
+  el.addEventListener("pointerdown", e => {
+    if (e.button > 0 || t3drag) return;
+    const start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    let ghost = null, hot = null;
+    const slotAt = (x, y) => { const t = document.elementFromPoint(x, y); return t && t.closest ? t.closest(".t3slot") : null; };
+    const move = ev => {
+      if (ev.pointerId !== start.id) return;
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 8) return;
+        t3drag = true;
+        ghost = document.createElement("div"); ghost.className = "t3ghost"; ghost.style.background = coverBg(title); ghost.textContent = title;
+        document.body.append(ghost);
+      }
+      ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px";
+      const s2 = slotAt(ev.clientX, ev.clientY);
+      if (s2 !== hot) { if (hot) hot.classList.remove("hot"); hot = s2; if (hot) hot.classList.add("hot"); }
+      ev.preventDefault();
+    };
+    const finish = (ev, dropped) => {
+      if (ev && ev.pointerId !== start.id) return;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      const wasDrag = !!ghost;
+      if (ghost) ghost.remove();
+      document.querySelectorAll(".t3slot.hot").forEach(x => x.classList.remove("hot"));
+      t3drag = false;
+      if (wasDrag) { el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 60); }
+      if (dropped && hot) { const n = +hot.dataset.slot; setTop(n, title); t3sel = null; toast("Spot " + (n + 1) + ": " + title); }
+      if (wasDrag) { if (dropped && hot) render(); renderTop3(true); }
+    };
+    const up = ev => finish(ev, true), cancel = ev => finish(ev, false);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
   });
-  const end = e => {
-    if (!start) return;
-    const wasDrag = !!ghost;
-    if (ghost) ghost.remove(); ghost = null;
-    if (hot) { hot.classList.remove("hot"); setTop(+hot.dataset.slot, title); t3sel = null; render(); toast("Spot " + (+hot.dataset.slot + 1) + ": " + title); }
-    hot = null; start = null;
-    if (wasDrag) { el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 50); }
-  };
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", () => { if (ghost) ghost.remove(); ghost = null; if (hot) hot.classList.remove("hot"); hot = null; start = null; });
-  el.addEventListener("click", e => { if (el.dataset.dragged) e.stopImmediatePropagation(); }, true);
+  el.addEventListener("click", e => { if (el.dataset.dragged) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
 function sizeStops() {
   stopG.selectAll("g.stop").each(function () {
