@@ -130,7 +130,9 @@ button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid
 .wr-snd[aria-pressed="true"] { background: #f2b14c; border-color: #f2b14c; color: #1b1408; }
 .wr-snd[hidden] { display: none; }
 .wr-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
-.wr-body { flex: 1; min-width: 0; overflow: hidden; position: relative; padding: 18px 24px 24px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.wr-body { flex: 1; min-width: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; padding: 18px 24px 24px; display: flex; flex-direction: column; justify-content: flex-start; gap: 14px; }
+.wr-body > :first-child { margin-top: auto; }
+.wr-body > :last-child { margin-bottom: auto; }
 .wr-tapl, .wr-tapr { position: absolute; top: 60px; bottom: 0; z-index: 2; }
 .wr-tapl { left: 0; width: 30%; } .wr-tapr { right: 0; width: 70%; }
 .wr-k { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
@@ -164,6 +166,11 @@ button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid
 .wr-worm { width: 100%; height: 90px; }
 .dbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .bestbtn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.editrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 6px; }
+.editrow[hidden] { display: none; }
+.editrow label { display: grid; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.editrow input, .editrow select { height: 36px; border-radius: 8px; border: 1px solid var(--border); background: #0b1522; color: var(--ink); padding: 0 8px; font: 14px var(--body); max-width: 180px; }
+.editrow input[type=number] { width: 90px; }
 .bestbtn.on { background: var(--brass); color: #1b1408; }
 .zoomcity { justify-self: start; height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #f49b9b; background: transparent; color: #f49b9b; font-family: var(--mono); font-size: 12px; cursor: pointer; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 140%); background: var(--brass); color: #1b1408; padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: transform .4s cubic-bezier(.3,1.4,.5,1); z-index: 60; max-width: calc(100% - 32px); text-align: center; }
@@ -221,7 +228,7 @@ button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid
 .vkind { display: flex; gap: 6px; flex-wrap: wrap; position: relative; z-index: 3; }
 .vk { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font-family: var(--mono); font-size: 12px; cursor: pointer; opacity: .75; }
 .vk[aria-checked="true"] { background: #f2b14c; border-color: #f2b14c; color: #1b1408; opacity: 1; }
-.wr-thumb { width: 40%; max-width: 170px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.wr-thumb { width: 40%; max-width: min(170px, 18vh); height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
 .wr-chk { font-size: 13px; color: inherit; position: relative; z-index: 3; }
 .wr-share { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: relative; z-index: 3; }
 .wr-share[hidden] { display: none; }
@@ -399,9 +406,15 @@ STOPS.forEach(s => { s.genre = GENRES[s.title] || "Fiction"; s.words = Math.roun
 
 // books the reader added (kept in this browser for the prototype)
 const ADDED_KEY = "litvoyage-added-v1";
+function esc2(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function countryOptions2() {
+  if (!WORLD) return "";
+  return WORLD.filter(f => f.properties && f.properties.name).map(f => [f.properties.name, f.id]).sort((a, b) => a[0].localeCompare(b[0])).map(([n, id]) => `<option value="${id}">${esc2(n)}</option>`).join("");
+}
 function insertAt() { return STOPS.map(s => s.done).lastIndexOf(true) + 1; }
 function loadAdded() {
-  try { (JSON.parse(localStorage.getItem(ADDED_KEY) || "[]") || []).forEach((b, i) => { if (!b.id) b.id = (b.title + "-" + b.author).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120); if (!b.order) b.order = i + 1; STOPS.splice(insertAt(), 0, b); }); } catch (e) {}
+  const NOW_Y = new Date().getFullYear();
+  try { (JSON.parse(localStorage.getItem(ADDED_KEY) || "[]") || []).forEach((b, i) => { if (!b.id) b.id = (b.title + "-" + b.author).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120); if (!b.order) b.order = i + 1; if (+b.year > NOW_Y || (b.year && +b.year < 800)) b.year = ""; STOPS.splice(insertAt(), 0, b); }); } catch (e) {}
 }
 const BEST_KEY = "litvoyage-best-v1";
 let bestKey = (() => { try { return localStorage.getItem(BEST_KEY) || ""; } catch (e) { return ""; } })();
@@ -600,12 +613,34 @@ function render() {
     </div>
     <div class="dbtns">
       <button class="bestbtn${bestKey === d.title.toLowerCase() ? " on" : ""}" id="bestbtn">${bestKey === d.title.toLowerCase() ? "★ My best book of 2026" : "☆ Make this my best book of 2026"}</button>
-      ${d.added ? `<button class="zoomcity" id="rmbook">Remove from my map</button>` : ""}
+      ${d.added ? `<button class="bestbtn" id="editbook">✎ Fix details</button><button class="zoomcity" id="rmbook">Remove from my map</button>` : ""}
+    </div>
+    <form class="editrow" id="editrow" hidden>
+      <label>Year <input id="ed-year" type="number" inputmode="numeric" min="800" max="2100" value="${esc2(d.year)}"></label>
+      <label>Author <input id="ed-author" type="text" value="${esc2(d.author)}"></label>
+      <label>Country <select id="ed-country"><option value="">Keep ${esc2(d.country)}</option>${countryOptions2()}</select></label>
+      <button class="bestbtn on" type="submit">Save</button>
+    </form>
+    <div hidden>
     </div>`;
   document.getElementById("bestbtn").onclick = () => {
     const was = bestKey === d.title.toLowerCase();
     setBest(was ? "" : d.title); render();
     toast(was ? "Best book cleared." : "★ " + d.title + " is your best book of 2026.");
+  };
+  const eb = document.getElementById("editbook");
+  if (eb) eb.onclick = () => { const f = document.getElementById("editrow"); f.hidden = !f.hidden; };
+  const ef = document.getElementById("editrow");
+  if (ef) ef.onsubmit = e => {
+    e.preventDefault();
+    const y = parseInt(document.getElementById("ed-year").value, 10), a = document.getElementById("ed-author").value.trim(), iso = document.getElementById("ed-country").value;
+    if (y >= 800 && y <= new Date().getFullYear()) d.year = y;
+    if (a) d.author = a;
+    const f = iso && WORLD && WORLD.find(x => x.id === iso);
+    if (f) { const c = d3.geoCentroid(f); const nm = f.properties.name; Object.assign(d, { iso: f.id, country: nm, city: nm, lon: c[0], lat: c[1], basis: "setting" }); }
+    if (typeof persistAdd === "function") persistAdd([d]); else saveAdded();
+    if (f) refit(); else render();
+    toast("Saved: " + d.title);
   };
   const rb = document.getElementById("rmbook");
   if (rb) rb.onclick = () => { const gone = STOPS.splice(active, 1)[0]; persistRemove(gone); active = Math.max(0, active - 1); refit(); placeTraveler(Math.max(0, STOPS.map(s => s.done).lastIndexOf(true))); };
@@ -742,7 +777,9 @@ function yearStats() {
   const byCountry = d3.rollups(J, v => v.length, s => s.country).sort((a, b) => b[1] - a[1]);
   const byAuthor = d3.rollups(J, v => v.length, s => s.author).sort((a, b) => b[1] - a[1]);
   const conts = [...new Set(J.map(s => s.continent))];
-  const oldest = d3.least(J, s => s.year), newest = d3.greatest(J, s => s.year);
+  const NOW_Y = new Date().getFullYear(), dated = J.filter(s => +s.year >= 800 && +s.year <= NOW_Y);
+  const pool = dated.length ? dated : J;
+  const oldest = d3.least(pool, s => +s.year), newest = d3.greatest(pool, s => +s.year);
   const longest = d3.greatest(J, s => s.pages);
   const words = d3.sum(J, s => s.words);
   const byGenre = d3.rollups(J, v => ({ n: v.length, p: d3.sum(v, s => s.pages), books: v.map(s => s.title) }), s => s.genre)
@@ -813,7 +850,7 @@ function buildSlides(S) {
     { bg: "#2b2140", fg: "#efe7ff", html: `
         <div class="wr-k">Your favourite genre</div>
         <h2 class="wr-h" style="font-size:clamp(30px,9vw,42px)">${S.byGenre[0][0]}</h2>
-        <p class="wr-p">${S.byGenre[0][1].n} ${S.byGenre[0][1].n > 1 ? "books" : "book"}: ${S.byGenre[0][1].books.map(t => `<i>${t}</i>`).join(" and ")}.</p>
+        <p class="wr-p">${S.byGenre[0][1].n} ${S.byGenre[0][1].n > 1 ? "books" : "book"}: ${shortList(S.byGenre[0][1].books)}.</p>
         <div class="gbars">${S.byGenre.map((gx, i) => `
           <div class="gbar${i === 0 ? " top" : ""}"><span class="gname">${gx[0]}</span>
             <span class="gtrack"><i style="--w:${gx[1].n / S.byGenre[0][1].n * 100}%; animation-delay:${.4 + i * .15}s"></i></span>
@@ -1461,7 +1498,7 @@ function drawStory(c, S, A, t) {
     kicker("You also travelled through time", 560); big(S.newest.year - S.oldest.year, 830); h2("years of literature", 940);
     const y0 = S.oldest.year, y1 = S.newest.year, ly = 1080;
     c.globalAlpha = .35; c.fillStyle = fg; c.fillRect(L, ly - 2, MAXW, 4); c.globalAlpha = 1;
-    S.J.slice().sort((a, b) => a.year - b.year).forEach((s, i, arr) => { const p = ap(.8 + i * (1.2 / arr.length), 1 + i * (1.2 / arr.length)); if (!p) return; const x = L + 20 + (s.year - y0) / ((y1 - y0) || 1) * (MAXW - 40); c.globalAlpha = p; c.fillStyle = fg; c.beginPath(); c.arc(x, ly, 16 * p, 0, 7); c.fill(); });
+    S.J.filter(s => +s.year >= y0 && +s.year <= y1).sort((a, b) => a.year - b.year).forEach((s, i, arr) => { const p = ap(.8 + i * (1.2 / arr.length), 1 + i * (1.2 / arr.length)); if (!p) return; const x = L + 20 + (s.year - y0) / ((y1 - y0) || 1) * (MAXW - 40); c.globalAlpha = p; c.fillStyle = fg; c.beginPath(); c.arc(x, ly, 16 * p, 0, 7); c.fill(); });
     T(String(y0), L, ly + 70, `500 30px ${MONO}`, fg, ap(1)); T(String(y1), W - L, ly + 70, `500 30px ${MONO}`, fg, ap(1), "right");
     para(`From ${S.oldest.author}'s ${S.oldest.title} (${S.oldest.year}) to ${S.newest.author}'s ${S.newest.title} (${S.newest.year}).`, 1240);
   } else if (name === "genre") {
@@ -1812,9 +1849,14 @@ function drawPassport(S) {
   setTimeout(() => pp.classList.add("open"), reduce ? 0 : 500);
 }
 
+function shortList(titles, max = 3) {
+  const it = titles.slice(0, max).map(t => `<i>${t}</i>`);
+  if (titles.length <= max) return it.length > 1 ? it.slice(0, -1).join(", ") + " and " + it[it.length - 1] : it.join("");
+  return it.join(", ") + ` and ${titles.length - max} more`;
+}
 function timelineHTML(S) {
   const y0 = S.oldest.year, y1 = S.newest.year;
-  return `<div class="line"></div>` + S.J.slice().sort((a, b) => a.year - b.year).map((s, i) => {
+  return `<div class="line"></div>` + S.J.filter(s => +s.year >= y0 && +s.year <= y1).sort((a, b) => a.year - b.year).map((s, i) => {
     const x = 4 + (s.year - y0) / ((y1 - y0) || 1) * 92;
     const lab = (s === S.oldest || s === S.newest) ? `<span class="yr" style="left:${x}%">${s.year}</span>` : "";
     return `<span class="dot" style="left:${x}%; animation-delay:${.3 + i * .18}s" title="${s.title}, ${s.year}"></span>${lab}`;
@@ -2104,7 +2146,10 @@ async function resolveBook(title, author, doc, withBlurb) {
   if (nonLatinRe.test(name) && wp.authorName) name = wp.authorName;
   const shown = nonLatinRe.test(doc.title) || norm(doc.title).length > norm(title).length + 12 ? titleCase(title) : (norm(doc.title) === norm(title) ? doc.title : titleCase(title));
   const place = wp.setting || olPlace(doc) || wp.author || (await authorPlace(name));
-  return Object.assign({ title: shown, author: name, year: wp.year || doc.first_publish_year || "", pages: doc.number_of_pages_median || 250, genre: genreFrom(doc.subject), blurb: withBlurb && doc.key ? await describe(doc) : "" },
+  const NOW_Y = new Date().getFullYear(), ok = y => y >= 800 && y <= NOW_Y;
+  const wy = ok(wp.year) ? wp.year : null, oy = ok(doc.first_publish_year) ? doc.first_publish_year : null;
+  const year = wy && oy ? (Math.abs(wy - oy) <= 60 ? Math.min(wy, oy) : oy) : (wy || oy || "");
+  return Object.assign({ title: shown, author: name, year, pages: doc.number_of_pages_median || 250, genre: genreFrom(doc.subject), blurb: withBlurb && doc.key ? await describe(doc) : "" },
     place || { country: null });
 }
 async function lookupCandidates(q) {
