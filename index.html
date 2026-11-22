@@ -164,6 +164,35 @@ button:focus-visible, li:focus-visible, .stop:focus-visible { outline: 2px solid
 .wr-btn { display: inline-flex; align-items: center; justify-content: center; }
 .wr-btn[hidden] { display: none; }
 .wr-worm { width: 100%; height: 90px; }
+.t3box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.t3hint { font-family: var(--mono); font-size: 12px; color: var(--brass); }
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 10px; align-items: end; }
+.t3slot { position: relative; border: 2px dashed var(--border); border-radius: 12px; min-height: 150px; display: grid; place-items: center; padding: 10px 8px 34px; background: #0b1522; transition: border-color .2s, transform .2s, background .2s; }
+.t3slot.first { min-height: 185px; border-color: rgba(242,177,76,.5); }
+.t3slot.hot { border-color: var(--brass); border-style: solid; transform: translateY(-4px); background: #13233a; }
+.t3slot.armed { border-color: var(--done); }
+.t3rank { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-size: 16px; background: var(--land); color: var(--ink); }
+.t3slot.first .t3rank { background: var(--brass); color: #1b1408; }
+.t3slot[data-slot="1"] .t3rank { background: #c9d2dc; color: #1b1408; }
+.t3slot[data-slot="2"] .t3rank { background: #c58b5a; color: #1b1408; }
+.t3in { width: 100%; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.t3empty { font-size: 12px; color: var(--muted); }
+.t3cover { width: min(88px, 80%); aspect-ratio: 2 / 3; border-radius: 4px 7px 7px 4px; box-shadow: inset 6px 0 0 rgba(0,0,0,.22), 0 6px 14px rgba(0,0,0,.35); display: grid; place-items: center; padding: 6px; color: #fbf3e2; font-family: var(--display); font-size: 11px; line-height: 1.15; overflow: hidden; touch-action: none; cursor: grab; }
+.t3slot.first .t3cover { width: min(104px, 82%); }
+.t3t { font-size: 12px; font-weight: 600; line-height: 1.3; max-width: 100%; overflow-wrap: anywhere; }
+.t3x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 12px; cursor: pointer; }
+.shelf { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 10px; scroll-snap-type: x proximity; }
+.shelf .bk { flex: 0 0 auto; width: 64px; height: 96px; border-radius: 3px 6px 6px 3px; box-shadow: inset 5px 0 0 rgba(0,0,0,.22); display: grid; place-items: center; padding: 5px; color: #fbf3e2; font-family: var(--display); font-size: 9.5px; line-height: 1.15; text-align: center; overflow: hidden; cursor: grab; touch-action: pan-x; user-select: none; -webkit-user-select: none; scroll-snap-align: start; border: 2px solid transparent; }
+.shelf .bk.sel { border-color: var(--done); transform: translateY(-4px); }
+.shelf .bk.used { opacity: .35; }
+.t3ghost { position: fixed; z-index: 80; pointer-events: none; width: 64px; height: 96px; border-radius: 3px 6px 6px 3px; display: grid; place-items: center; padding: 5px; color: #fbf3e2; font-family: var(--display); font-size: 9.5px; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,.5); transform: translate(-50%, -60%) rotate(-6deg); }
+.podcard { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; align-items: end; margin-top: 6px; }
+.podcard .pc { display: grid; gap: 8px; justify-items: center; text-align: center; animation: rise .6s cubic-bezier(.3,1.4,.5,1) both; }
+.podcard .pc .cv { width: 100%; aspect-ratio: 2 / 3; border-radius: 4px 8px 8px 4px; box-shadow: inset 7px 0 0 rgba(0,0,0,.22), 0 10px 24px rgba(0,0,0,.35); display: grid; place-items: center; padding: 8px; color: #fbf3e2; font-family: var(--display); font-size: 13px; line-height: 1.15; overflow: hidden; }
+.podcard .pc .st { width: 100%; border-radius: 8px 8px 0 0; display: grid; place-items: center; font-family: var(--display); font-size: 26px; color: #1b1408; }
+.podcard .pc .nm { font-size: 12px; font-weight: 600; line-height: 1.3; }
+.podcard .pc .au { font-size: 11px; opacity: .75; margin-top: -4px; }
+@keyframes rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 .dbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .bestbtn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--brass); background: transparent; color: var(--brass); font-family: var(--mono); font-size: 12px; cursor: pointer; }
 .editrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 6px; }
@@ -287,7 +316,7 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
   ol.legs li { grid-template-columns: 28px 1fr; }
   .li-dates { grid-column: 2; text-align: left; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .stamp, .wr-time .dot, .gatsby span, .gatsby .gx, .chips span { opacity: 1; } .gtrack i { width: var(--w); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .stamp, .wr-time .dot, .gatsby span, .gatsby .gx, .chips span, .podcard .pc { opacity: 1; } .gtrack i { width: var(--w); } }
 </style>
 </head>
 <body>
@@ -361,6 +390,17 @@ a.wr-btn { display: inline-flex; align-items: center; text-decoration: none; }
     <div id="add-results" class="add-results"></div>
   </section>
 
+  <section class="t3box" id="t3box">
+    <div class="add-head"><h3 style="margin:0">Your top 3 of 2026</h3><span class="t3hint" id="t3hint">Drag books onto the podium</span></div>
+    <div class="podium" id="podium">
+      <div class="t3slot" data-slot="1"><div class="t3rank">2</div><div class="t3in"></div></div>
+      <div class="t3slot first" data-slot="0"><div class="t3rank">1</div><div class="t3in"></div></div>
+      <div class="t3slot" data-slot="2"><div class="t3rank">3</div><div class="t3in"></div></div>
+    </div>
+    <div class="shelf" id="shelf" aria-label="Your books. Drag one onto the podium, or tap a book and then tap a place."></div>
+    <p class="hint2">Drag a book onto 1, 2 or 3, or tap a book and then tap a spot. Your number 1 is your best book of 2026.</p>
+  </section>
+
   <section class="detail" id="detail" aria-live="polite"></section>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -418,10 +458,27 @@ function loadAdded() {
 }
 const BEST_KEY = "litvoyage-best-v1";
 let bestKey = (() => { try { return localStorage.getItem(BEST_KEY) || ""; } catch (e) { return ""; } })();
+const TOP_KEY = "litvoyage-top3-v1";
+let top3 = (() => { try { const a = JSON.parse(localStorage.getItem(TOP_KEY) || "[]"); return Array.isArray(a) ? a.concat(["", "", ""]).slice(0, 3) : ["", "", ""]; } catch (e) { return ["", "", ""]; } })();
+function saveMeta() {
+  try { localStorage.setItem(TOP_KEY, JSON.stringify(top3)); localStorage.setItem(BEST_KEY, bestKey); } catch (e) {}
+  if (typeof BOOKS_COL !== "undefined" && BOOKS_COL) BOOKS_COL.doc("_meta").set({ best: bestKey, top3 }).catch(() => {});
+}
+function setTop(slot, title) {
+  const key = title ? title.toLowerCase() : "";
+  const from = key ? top3.indexOf(key) : -1;
+  if (from >= 0 && from !== slot) top3[from] = top3[slot];  // moving between spots swaps them
+  top3[slot] = key;
+  bestKey = top3[0] || bestKey;
+  if (!top3[0] && slot === 0) bestKey = "";
+  saveMeta();
+}
 function setBest(title) {
   bestKey = title ? title.toLowerCase() : "";
   try { localStorage.setItem(BEST_KEY, bestKey); } catch (e) {}
-  if (typeof BOOKS_COL !== "undefined" && BOOKS_COL) BOOKS_COL.doc("_meta").set({ best: bestKey }).catch(() => {});
+  const key = bestKey, at = top3.indexOf(key);
+  if (key) { if (at > 0) top3[at] = top3[0]; top3[0] = key; } else top3[0] = "";
+  saveMeta();
 }
 function saveAdded() { try { localStorage.setItem(ADDED_KEY, JSON.stringify(STOPS.filter(s => s.added))); } catch (e) {} }
 loadAdded();
@@ -579,6 +636,7 @@ function render() {
   document.getElementById("s-countries").textContent = new Set(read.map(s => s.country)).size;
   document.getElementById("s-km").textContent = Math.round(km).toLocaleString("en-US");
   document.getElementById("s-bar").style.width = (read.length / STOPS.length * 100) + "%";
+  renderTop3();
 
   const nextIdx = STOPS.findIndex(s => !s.done);
   d3.select("#legs").selectAll("li").data(STOPS).join("li")
@@ -646,6 +704,71 @@ function render() {
   if (rb) rb.onclick = () => { const gone = STOPS.splice(active, 1)[0]; persistRemove(gone); active = Math.max(0, active - 1); refit(); placeTraveler(Math.max(0, STOPS.map(s => s.done).lastIndexOf(true))); };
 }
 
+let t3sel = null;  // book picked by tap, waiting for a spot
+const coverBg = t => typeof coverColor === "function" ? coverColor(t) : "#2f6b52";
+function bookByKey(k) { return k ? STOPS.find(s => s.done && s.title.toLowerCase() === k) : null; }
+function renderTop3() {
+  const shelf = document.getElementById("shelf"); if (!shelf) return;
+  const read = STOPS.filter(s => s.done);
+  document.getElementById("t3box").hidden = !read.length;
+  // drop picks for books no longer on the map
+  top3 = top3.map(k => bookByKey(k) ? k : "");
+  document.querySelectorAll(".t3slot").forEach(sl => {
+    const i = +sl.dataset.slot, b = bookByKey(top3[i]), box = sl.querySelector(".t3in");
+    sl.querySelectorAll(".t3x").forEach(x => x.remove());
+    sl.classList.toggle("armed", !!t3sel);
+    if (b) {
+      box.innerHTML = `<div class="t3cover" data-title="${esc2(b.title)}" style="background:${coverBg(b.title)}">${esc2(b.title)}</div><div class="t3t">${esc2(b.title)}</div>`;
+      const x = document.createElement("button"); x.className = "t3x"; x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Remove " + b.title + " from spot " + (i + 1));
+      x.onclick = e => { e.stopPropagation(); setTop(i, ""); render(); };
+      sl.append(x);
+      dragify(box.querySelector(".t3cover"), b.title);
+    } else box.innerHTML = `<div class="t3empty">${t3sel ? "Tap to place here" : "Drop a book here"}</div>`;
+    sl.onclick = () => { if (t3sel) { setTop(i, t3sel); t3sel = null; render(); } };
+  });
+  const used = new Set(top3.filter(Boolean));
+  shelf.innerHTML = "";
+  read.forEach(b => {
+    const el = document.createElement("div");
+    el.className = "bk" + (used.has(b.title.toLowerCase()) ? " used" : "") + (t3sel === b.title ? " sel" : "");
+    el.style.background = coverBg(b.title); el.textContent = b.title; el.tabIndex = 0; el.setAttribute("role", "button");
+    el.setAttribute("aria-label", b.title + ". Tap, then tap a spot on the podium.");
+    el.onclick = () => { t3sel = t3sel === b.title ? null : b.title; renderTop3(); };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.onclick(); } if (["1", "2", "3"].includes(e.key)) { setTop(+e.key - 1, b.title); render(); } };
+    dragify(el, b.title);
+    shelf.append(el);
+  });
+  document.getElementById("t3hint").textContent = t3sel ? "Now tap a spot" : top3.filter(Boolean).length === 3 ? "Your podium is set ✓" : "Drag books onto the podium";
+}
+// pointer-based dragging works with a mouse and with fingers (the shelf still scrolls sideways)
+function dragify(el, title) {
+  let start = null, ghost = null, hot = null;
+  const slotAt = (x, y) => { const t = document.elementFromPoint(x, y); return t && t.closest ? t.closest(".t3slot") : null; };
+  el.addEventListener("pointerdown", e => { if (e.button > 0) return; start = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
+  el.addEventListener("pointermove", e => {
+    if (!start || e.pointerId !== start.id) return;
+    if (!ghost) {
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
+      ghost = document.createElement("div"); ghost.className = "t3ghost"; ghost.style.background = coverBg(title); ghost.textContent = title;
+      document.body.append(ghost); try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
+    const s2 = slotAt(e.clientX, e.clientY);
+    if (s2 !== hot) { if (hot) hot.classList.remove("hot"); hot = s2; if (hot) hot.classList.add("hot"); }
+    e.preventDefault();
+  });
+  const end = e => {
+    if (!start) return;
+    const wasDrag = !!ghost;
+    if (ghost) ghost.remove(); ghost = null;
+    if (hot) { hot.classList.remove("hot"); setTop(+hot.dataset.slot, title); t3sel = null; render(); toast("Spot " + (+hot.dataset.slot + 1) + ": " + title); }
+    hot = null; start = null;
+    if (wasDrag) { el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 50); }
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", () => { if (ghost) ghost.remove(); ghost = null; if (hot) hot.classList.remove("hot"); hot = null; start = null; });
+  el.addEventListener("click", e => { if (el.dataset.dragged) e.stopImmediatePropagation(); }, true);
+}
 function sizeStops() {
   stopG.selectAll("g.stop").each(function () {
     const s = d3.select(this);
@@ -788,6 +911,8 @@ function yearStats() {
   S.type = readerType(S);
   S.badges = [];
   S.best = J.find(b => bestKey && b.title.toLowerCase() === bestKey) || null;
+  S.top3 = top3.map(k => J.find(b => k && b.title.toLowerCase() === k) || null);
+  if (!S.top3.some(Boolean)) S.top3 = null;
   return S;
 }
 
@@ -874,7 +999,12 @@ function buildSlides(S) {
         const w = window._rtWorm = new Worm(m.append("g"), { size: 3 });
         WORMS.push(w); w.placeAt([210, 78], [340, 78]); w.reading(true);
       } },
-    ...(S.best ? [{ bg: "#f4ead5", fg: "#2a2018", html: `
+    ...(S.top3 ? [{ bg: "#2a1f3d", fg: "#f3ecff", html: `
+        <div class="wr-k">Your top 3 of 2026</div>
+        <h2 class="wr-h">${S.top3[0] ? "The best of your year" : "Your favourites"}</h2>
+        <div class="podcard">${[1, 0, 2].map((i, k) => { const b = S.top3[i]; const h = [96, 130, 70][i];
+          return `<div class="pc" style="animation-delay:${[.5, .9, .2][i] + .2}s">${b ? `<div class="cv" style="background:${coverBg(b.title)}">${b.title}</div><div class="nm">${b.title}</div><div class="au">${b.author}</div>` : `<div class="cv" style="background:rgba(255,255,255,.08)"></div>`}<div class="st" style="height:${h}px;background:${["#f2b14c", "#c9d2dc", "#c58b5a"][i]}">${i + 1}</div></div>`; }).join("")}</div>` }] : []),
+    ...(S.best && !S.top3 ? [{ bg: "#f4ead5", fg: "#2a2018", html: `
         <div class="wr-k">Your best book of 2026</div>
         <div class="bestcard">
           <div class="bc-star">★</div>
@@ -1381,12 +1511,12 @@ function buildStoryAssets(S, kind = "year") {
   const voy = kind === "year" ? null : buildVoyage(S);
   const scenes = kind === "voyage" ? [["voyagefull", voy.dur]] : [
     ["countries", 3.4], ["pages", 3], ["words", 3.2], ["distance", 3.6], ["time", 3.2], ["genre", 3.2],
-    ["places", 3], ["type", 3.4], ...(S.best ? [["best", 3.6]] : []), ["passport", 2.2 + n * step + 2], ["outro", 3.6], ...(kind === "both" ? [["voyagefull", voy.dur]] : [])
+    ["places", 3], ["type", 3.4], ...(S.top3 ? [["top3", 4.4]] : S.best ? [["best", 3.6]] : []), ["passport", 2.2 + n * step + 2], ["outro", 3.6], ...(kind === "both" ? [["voyagefull", voy.dur]] : [])
   ];
   let t = 0; scenes.forEach(s => { s.push(t); t += s[1]; });
   return { sprites, step, scenes, dur: t, voy };
 }
-const SB = { vintro: ["#0f1b2b", "#e9eef4"], voutro: ["#12382b", "#e8f5dc"], voyage: ["#0f1b2b", "#e9eef4"], best: ["#f4ead5", "#2a2018"], countries: ["#12382b", "#e8f5dc"], pages: ["#f2b14c", "#1b1408"], words: ["#f4ead5", "#2a2018"], distance: ["#0f1b2b", "#e9eef4"], time: ["#b9553f", "#fbefe4"], genre: ["#2b2140", "#efe7ff"], places: ["#1d2f4a", "#e9eef4"], type: ["#3a2433", "#fbe9f0"], challenges: ["#16323a", "#e3f4f2"], passport: ["#1c1412", "#f4ead5"], outro: ["#12382b", "#e8f5dc"] };
+const SB = { top3: ["#2a1f3d", "#f3ecff"], vintro: ["#0f1b2b", "#e9eef4"], voutro: ["#12382b", "#e8f5dc"], voyage: ["#0f1b2b", "#e9eef4"], best: ["#f4ead5", "#2a2018"], countries: ["#12382b", "#e8f5dc"], pages: ["#f2b14c", "#1b1408"], words: ["#f4ead5", "#2a2018"], distance: ["#0f1b2b", "#e9eef4"], time: ["#b9553f", "#fbefe4"], genre: ["#2b2140", "#efe7ff"], places: ["#1d2f4a", "#e9eef4"], type: ["#3a2433", "#fbe9f0"], challenges: ["#16323a", "#e3f4f2"], passport: ["#1c1412", "#f4ead5"], outro: ["#12382b", "#e8f5dc"] };
 
 function drawStory(c, S, A, t) {
   const { W, H, SERIF, MONO, SANS } = CARD, L = 80, MAXW = W - 2 * L;
@@ -1468,6 +1598,26 @@ function drawStory(c, S, A, t) {
     para(`${S.km >= 40075 ? `That's ${(S.km / 40075).toFixed(1)} times around the Earth` : `That's ${Math.round(S.km / 40075 * 100)}% of the way around the Earth`}, through ${S.countries.length} countries and ${S.J.length} books.`, 1080, ap(.8, 1.3), 42);
     drawWormCanvas(c, 620, 1420, 7, lt * .4); drawBookCanvas(c, 620, 1330, 5.5, lt);
     T("Good books take time. Read on in 2027.", W / 2, 1780, `500 30px ${MONO}`, fg, ap(1.6) * .8, "center");
+  } else if (name === "top3") {
+    kicker("Your top 3 of 2026", 470); h2(S.top3[0] ? "The best of your year" : "Your favourites", 580, 86);
+    const cols = [[1, L, 300, 260], [0, L + 320, 300, 360], [2, L + 640, 280, 190]];
+    cols.forEach(([i, x, w, ph], k) => {
+      const b = S.top3[i], p = easeOut((lt - [.9, 1.4, .4][i]) / .7); if (p <= 0) return;
+      const base = 1640, ty = (1 - p) * 120;
+      c.save(); c.globalAlpha = p; c.translate(0, ty);
+      c.fillStyle = ["#f2b14c", "#c9d2dc", "#c58b5a"][i]; roundRect(c, x, base - ph, w - 20, ph, 16); c.fill();
+      c.fillStyle = "#1b1408"; c.font = `400 90px ${SERIF}`; c.textAlign = "center"; c.fillText(String(i + 1), x + (w - 20) / 2, base - ph / 2 + 30);
+      if (b) {
+        const cw = w - 50, ch = cw * 1.5, cx = x + 15, cy = base - ph - ch - 130;
+        c.shadowColor = "rgba(0,0,0,.45)"; c.shadowBlur = 24; c.shadowOffsetY = 12; c.fillStyle = coverColor(b.title); roundRect(c, cx, cy, cw, ch, 10); c.fill(); c.shadowColor = "transparent";
+        c.fillStyle = "rgba(0,0,0,.22)"; c.fillRect(cx, cy, 16, ch);
+        c.fillStyle = "#fbf3e2"; c.font = `400 34px ${SERIF}`;
+        wrapLines(c, b.title, cw - 40, 4).forEach((l, j) => c.fillText(l, cx + cw / 2 + 8, cy + 80 + j * 42));
+        c.fillStyle = fg; c.font = `600 30px ${SANS}`; c.fillText(wrapLines(c, b.title, w - 20, 1)[0], x + (w - 20) / 2, base - ph - 80);
+        c.globalAlpha = p * .75; c.font = `400 26px ${SANS}`; c.fillText(wrapLines(c, b.author, w - 20, 1)[0], x + (w - 20) / 2, base - ph - 40);
+      }
+      c.restore(); c.textAlign = "left";
+    });
   } else if (name === "best") {
     kicker("Your best book of 2026", 600);
     const b = S.best, bx = L, by = 680, bw = MAXW, bh = 760;
@@ -2411,8 +2561,12 @@ async function persistRemove(b) {
         DB = db; BOOKS_COL = db.collection("data/users/" + uid);
         const snap = await BOOKS_COL.limit(1000).get();
         const meta = snap.docs.find(d => d.id === "_meta");
-        if (meta && meta.data() && typeof meta.data().best === "string") { bestKey = meta.data().best; try { localStorage.setItem(BEST_KEY, bestKey); } catch (e) {} render(); }
-        else if (bestKey) BOOKS_COL.doc("_meta").set({ best: bestKey }).catch(() => {});
+        if (meta && meta.data() && typeof meta.data().best === "string") {
+          const md = meta.data(); bestKey = md.best;
+          if (Array.isArray(md.top3)) top3 = md.top3.concat(["", "", ""]).slice(0, 3);
+          try { localStorage.setItem(BEST_KEY, bestKey); localStorage.setItem(TOP_KEY, JSON.stringify(top3)); } catch (e) {}
+          render();
+        } else if (bestKey || top3.some(Boolean)) saveMeta();
         const saved = snap.docs.map(d => d.data()).filter(b => b && b.title).sort((a, b) => (a.order || 0) - (b.order || 0));
         const have = new Set(saved.map(b => b.id));
         // move books from this browser into the account
