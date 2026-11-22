@@ -1975,6 +1975,8 @@ function setStatus(t, err) { addStatus.textContent = t; addStatus.classList.togg
 const COUNTRY_FIX = { "People's Republic of China": "China", "United States of America": "United States", "Kingdom of the Netherlands": "Netherlands", "Kingdom of Denmark": "Denmark", "Russian Federation": "Russia", "Republic of Ireland": "Ireland", "State of Palestine": "Palestine", "Czech Republic": "Czechia" };
 const CONT_FIX = { "Australia": "Oceania", "Insular Oceania": "Oceania", "Oceania": "Oceania", "Europe": "Europe", "Asia": "Asia", "Africa": "Africa", "North America": "North America", "South America": "South America" };
 const fixCountry = n => COUNTRY_FIX[n] || n;
+const OLD_ISO = { "200": ["203", "Czechia"], "810": ["643", "Russia"], "891": ["688", "Serbia"], "890": ["688", "Serbia"], "278": ["276", "Germany"], "280": ["276", "Germany"], "230": ["231", "Ethiopia"], "720": ["887", "Yemen"] };
+function modernize(iso, name) { const o = OLD_ISO[iso]; return o ? o : [iso, name]; }
 function genreFrom(subjects = []) {
   const s = subjects.join(" | ").toLowerCase();
   const rules = [["science fiction", "Science fiction"], ["fantasy", "Fantasy"], ["horror", "Horror"], ["detective", "Mystery & crime"], ["mystery", "Mystery & crime"], ["crime", "Mystery & crime"], ["thriller", "Thriller"], ["romance", "Romance"], ["love stories", "Romance"], ["satire", "Satire"], ["humor", "Satire"], ["war", "War fiction"], ["historical", "Historical fiction"], ["psycholog", "Psychological fiction"], ["short stories", "Short stories"], ["poetry", "Poetry"], ["autobiography", "Memoir"], ["memoir", "Memoir"], ["biography", "Memoir"], ["juvenile", "Young adult"], ["young adult", "Young adult"], ["fiction", "Literary fiction"], ["novel", "Literary fiction"]];
@@ -1986,46 +1988,89 @@ async function getJSON(url, ms = 12000) {
   try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error("http " + r.status); return await r.json(); }
   finally { clearTimeout(tm); }
 }
-const OL_FIELDS = "key,title,author_name,first_publish_year,number_of_pages_median,subject,place";
+const OL_FIELDS = "key,title,author_name,first_publish_year,number_of_pages_median,subject,place,edition_count";
+function pickDoc(docs, title, author) {
+  const nt = norm(title).replace(/[^a-z0-9 ]/g, "").trim();
+  let best = null, bs = -1;
+  docs.forEach(d => {
+    const dt = norm(d.title).replace(/[^a-z0-9 ]/g, "").trim();
+    let sc = dt === nt ? 100 : (nt && (dt.startsWith(nt) || nt.startsWith(dt))) ? 35 : 0;
+    if (author && (d.author_name || []).some(a => authorMatch(author, a))) sc += 60;
+    sc += Math.log((d.edition_count || 0) + 1) * 6;
+    if (sc > bs) { bs = sc; best = d; }
+  });
+  return best;
+}
 async function olSearch(params, limit = 3) {
   const j = await getJSON(`https://openlibrary.org/search.json?${params}&limit=${limit}&fields=${OL_FIELDS}`);
   return (j.docs || []).filter(d => d.title);
 }
 const pt = s => { const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(s || ""); return m ? [+m[1], +m[2]] : null; };
+const CENTER_FIX = { "643": [37.62, 55.75], "124": [-79.4, 43.7], "840": [-77.0, 38.9], "036": [151.2, -33.9], "076": [-43.2, -22.9], "156": [116.4, 39.9] };
 function centroidOf(iso) {
+  if (CENTER_FIX[iso]) return CENTER_FIX[iso];
   const f = WORLD && WORLD.find(x => x.id === iso);
   return f ? d3.geoCentroid(f) : null;
 }
-// where is the story set? (or, for imaginary worlds, where did the author live?)
+const norm = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function authorMatch(a, b) {
+  if (!a || !b) return true;
+  const x = norm(a).split(/[ ,.]+/).filter(Boolean).pop(), y = norm(b).split(/[ ,.]+/).filter(Boolean).pop();
+  if (!x || !y) return true;
+  const k = Math.min(4, x.length, y.length); return x.slice(0, k) === y.slice(0, k);
+}
+const titleCase = s => s.replace(/\w\S*/g, (w, i) => (i && /^(a|an|and|the|of|in|on|at|to|for|or|by|de|la|el|me)$/i.test(w)) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1));
+const SPARQL = q => getJSON("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q), 15000).then(j => j.results.bindings);
+const COUNTRY_PARTS = (p) => `OPTIONAL { ${p} wdt:P27 ?ac . ?ac wdt:P299 ?aiso . OPTIONAL { ?ac wdt:P30 ?acont } OPTIONAL { ?ac wdt:P36/wdt:P625 ?acap } }
+  OPTIONAL { ${p} wdt:P19/wdt:P17 ?bc . ?bc wdt:P299 ?biso . OPTIONAL { ?bc wdt:P30 ?bcont } OPTIONAL { ?bc wdt:P36/wdt:P625 ?bcap } }`;
+function authorCountry(rows) {
+  const v = (r, k) => r[k] && r[k].value;
+  const au = rows.find(r => v(r, "aiso")) || rows.find(r => v(r, "biso"));
+  if (!au) return null;
+  const a = v(au, "aiso") ? "a" : "b", [iso, country] = modernize(v(au, a + "iso").padStart(3, "0"), fixCountry(v(au, a === "a" ? "acLabel" : "bcLabel")));
+  const c = pt(v(au, a === "a" ? "acap" : "bcap")) || centroidOf(iso);
+  return { country, iso, continent: CONT_FIX[v(au, a + "contLabel")] || "", city: country, lon: c && c[0], lat: c && c[1], basis: "author" };
+}
+// where is the story set? Falls back to where the author lived.
 async function wikiPlace(title, author) {
-  const last = (author || "").split(/[ ,]+/).filter(Boolean).pop() || "";
-  const t = title.replace(/"/g, '\\"');
-  const q = `SELECT ?placeLabel ?pcoord ?countryLabel ?ciso ?contLabel ?capc ?acLabel ?aiso ?acontLabel ?acap ?bcLabel ?biso ?bcontLabel ?bcap WHERE {
-  ?work rdfs:label "${t}"@en ; wdt:P50 ?author .
-  ${last ? `?author rdfs:label ?al . FILTER(LANG(?al) = "en" && CONTAINS(LCASE(?al), "${last.toLowerCase().replace(/"/g, "")}"))` : ""}
+  const vars = [...new Set([title, titleCase(title), title.toLowerCase()])].map(t => `"${t.replace(/["\\]/g, "")}"@en`).join(" ");
+  let rows = [];
+  try {
+    rows = await SPARQL(`SELECT ?work ?sl ?authorLabel ?pub ?placeLabel ?pcoord ?countryLabel ?ciso ?contLabel ?capc ?acLabel ?aiso ?acontLabel ?acap ?bcLabel ?biso ?bcontLabel ?bcap WHERE {
+  VALUES ?t { ${vars} }
+  ?work rdfs:label ?t ; wdt:P50 ?author ; wikibase:sitelinks ?sl .
+  OPTIONAL { ?work wdt:P577 ?pub }
   OPTIONAL { ?work wdt:P840 ?place . OPTIONAL { ?place wdt:P625 ?pcoord }
     OPTIONAL { ?place wdt:P17 ?country . ?country wdt:P299 ?ciso . OPTIONAL { ?country wdt:P30 ?cont } OPTIONAL { ?country wdt:P36/wdt:P625 ?capc } } }
-  OPTIONAL { ?author wdt:P27 ?ac . ?ac wdt:P299 ?aiso . OPTIONAL { ?ac wdt:P30 ?acont } OPTIONAL { ?ac wdt:P36/wdt:P625 ?acap } }
-  OPTIONAL { ?author wdt:P19/wdt:P17 ?bc . ?bc wdt:P299 ?biso . OPTIONAL { ?bc wdt:P30 ?bcont } OPTIONAL { ?bc wdt:P36/wdt:P625 ?bcap } }
+  ${COUNTRY_PARTS("?author")}
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-} LIMIT 40`;
-  let rows = [];
-  try { rows = (await getJSON("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(q), 15000)).results.bindings; } catch (e) { return null; }
+} ORDER BY DESC(?sl) LIMIT 80`);
+  } catch (e) { rows = []; }
   const v = (r, k) => r[k] && r[k].value;
-  const set = rows.find(r => v(r, "ciso") && v(r, "pcoord")) || rows.find(r => v(r, "ciso"));
+  const works = [...new Set(rows.map(r => v(r, "work")))];
+  const best = works.find(w => rows.some(r => v(r, "work") === w && authorMatch(author, v(r, "authorLabel")))) || works[0];
+  const R = rows.filter(r => v(r, "work") === best);
+  const set = R.find(r => v(r, "ciso") && v(r, "pcoord")) || R.find(r => v(r, "ciso"));
+  let setting = null;
   if (set) {
-    const iso = v(set, "ciso").padStart(3, "0"), country = fixCountry(v(set, "countryLabel"));
+    const [iso, country] = modernize(v(set, "ciso").padStart(3, "0"), fixCountry(v(set, "countryLabel")));
     const placeName = v(set, "placeLabel"), isCountry = placeName === v(set, "countryLabel");
     const c = (!isCountry && pt(v(set, "pcoord"))) || pt(v(set, "capc")) || centroidOf(iso);
-    return { country, iso, continent: CONT_FIX[v(set, "contLabel")] || "", city: isCountry ? country : placeName, lon: c && c[0], lat: c && c[1], basis: "setting" };
+    setting = { country, iso, continent: CONT_FIX[v(set, "contLabel")] || "", city: isCountry ? country : placeName, lon: c && c[0], lat: c && c[1], basis: "setting" };
   }
-  const au = rows.find(r => v(r, "aiso")) || rows.find(r => v(r, "biso"));
-  if (au) {
-    const a = v(au, "aiso") ? "a" : "b", iso = v(au, a + "iso").padStart(3, "0"), country = fixCountry(v(au, a === "a" ? "acLabel" : "bcLabel"));
-    const c = pt(v(au, a === "a" ? "acap" : "bcap")) || centroidOf(iso);
-    return { country, iso, continent: CONT_FIX[v(au, a + "contLabel")] || "", city: country, lon: c && c[0], lat: c && c[1], basis: "author" };
-  }
-  return null;
+  const years = R.map(r => v(r, "pub")).filter(Boolean).map(d => parseInt(d, 10)).filter(y => y > 0);
+  return { setting, author: authorCountry(R), authorName: R[0] && v(R[0], "authorLabel"), year: years.length ? Math.min(...years) : null };
+}
+async function authorPlace(name) {
+  if (!name) return null;
+  try {
+    const rows = await SPARQL(`SELECT ?sl ?acLabel ?aiso ?acontLabel ?acap ?bcLabel ?biso ?bcontLabel ?bcap WHERE {
+  ?p rdfs:label "${name.replace(/["\\]/g, "")}"@en ; wdt:P31 wd:Q5 ; wikibase:sitelinks ?sl .
+  ${COUNTRY_PARTS("?p")}
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+} ORDER BY DESC(?sl) LIMIT 10`);
+    return authorCountry(rows);
+  } catch (e) { return null; }
 }
 // last resort: Open Library's "places" tag, matched against country names
 function olPlace(doc) {
@@ -2033,7 +2078,7 @@ function olPlace(doc) {
   for (const p of doc.place) {
     const low = p.toLowerCase();
     const f = WORLD.find(x => x.properties && x.properties.name && low.includes(x.properties.name.toLowerCase()));
-    if (f) { const c = d3.geoCentroid(f); return { country: fixCountry(f.properties.name), iso: f.id, continent: "", city: p.replace(/\s*\(.*\)/, ""), lon: c[0], lat: c[1], basis: "setting" }; }
+    if (f) { const c = CENTER_FIX[f.id] || d3.geoCentroid(f); return { country: fixCountry(f.properties.name), iso: f.id, continent: "", city: p.replace(/\s*\(.*\)/, ""), lon: c[0], lat: c[1], basis: "setting" }; }
   }
   return null;
 }
@@ -2046,19 +2091,34 @@ async function describe(doc) {
     const m = d.match(/^(.{40,220}?[.!?])(\s|$)/); return m ? m[1] : d.slice(0, 200) + "…";
   } catch (e) { return ""; }
 }
-async function toCandidate(doc, withBlurb) {
-  const author = (doc.author_name || [])[0] || "Unknown";
-  const place = (await wikiPlace(doc.title, author)) || olPlace(doc);
-  return Object.assign({ title: doc.title, author, year: doc.first_publish_year || "", pages: doc.number_of_pages_median || 250, genre: genreFrom(doc.subject), blurb: withBlurb ? await describe(doc) : "" },
+const nonLatinRe = /[^\u0000-\u024F\u1E00-\u1EFF\s\p{P}\p{S}\d]/u;
+async function resolveBook(title, author, doc, withBlurb) {
+  // Wikidata knows the famous work behind a title, so it decides the author; Open Library fills in pages and subjects
+  const wp = await wikiPlace(title, author);
+  const who = author || wp.authorName || "";
+  if (!doc || (who && !(doc.author_name || []).some(a => authorMatch(who, a)))) {
+    try { const docs = await olSearch("q=" + encodeURIComponent(title + (who ? " " + who : "")), 8); doc = pickDoc(docs, title, who) || doc; } catch (e) {}
+  }
+  doc = doc || { title, author_name: who ? [who] : [], key: "" };
+  let name = author || wp.authorName || (doc.author_name || [])[0] || "Unknown";
+  if (nonLatinRe.test(name) && wp.authorName) name = wp.authorName;
+  const shown = nonLatinRe.test(doc.title) || norm(doc.title).length > norm(title).length + 12 ? titleCase(title) : (norm(doc.title) === norm(title) ? doc.title : titleCase(title));
+  const place = wp.setting || olPlace(doc) || wp.author || (await authorPlace(name));
+  return Object.assign({ title: shown, author: name, year: wp.year || doc.first_publish_year || "", pages: doc.number_of_pages_median || 250, genre: genreFrom(doc.subject), blurb: withBlurb && doc.key ? await describe(doc) : "" },
     place || { country: null });
 }
 async function lookupCandidates(q) {
-  const docs = await olSearch("q=" + encodeURIComponent(q), 3);
-  return Promise.all(docs.map(d => toCandidate(d, true)));
+  const docs = await olSearch("q=" + encodeURIComponent(q), 6);
+  const first = await resolveBook(q, "", pickDoc(docs, q, ""), true);
+  // other books with similar titles, in case the reader meant one of those
+  const nq = norm(q).replace(/[^a-z0-9 ]/g, "").trim();
+  const others = docs.filter(d => { const dt = norm(d.title).replace(/[^a-z0-9 ]/g, "").trim(); return dt === nq && !authorMatch(first.author, (d.author_name || [])[0] || "") && !nonLatinRe.test(d.title); }).slice(0, 2);
+  const rest = await Promise.all(others.map(d => resolveBook(d.title, (d.author_name || [])[0] || "", d, false)));
+  return [first, ...rest];
 }
 async function lookupISBN(isbn) {
   const docs = await olSearch("isbn=" + encodeURIComponent(isbn), 1);
-  return Promise.all(docs.map(d => toCandidate(d, true)));
+  return Promise.all(docs.map(d => resolveBook(d.title, (d.author_name || [])[0] || "", d, true)));
 }
 async function lookupMany(part) {
   // part: [{title, author}] → [{i, ...candidate}] ; three at a time to stay polite to the free services
@@ -2066,12 +2126,7 @@ async function lookupMany(part) {
   const worker = async () => {
     while (k < part.length) {
       const i = k++, b = part[i];
-      try {
-        const docs = await olSearch("title=" + encodeURIComponent(b.title) + (b.author ? "&author=" + encodeURIComponent(b.author) : ""), 1);
-        const doc = docs[0] || { title: b.title, author_name: b.author ? [b.author] : [], key: "" };
-        const cand = await toCandidate(doc, false);
-        out.push(Object.assign({ i }, cand));
-      } catch (e) {}
+      try { out.push(Object.assign({ i }, await resolveBook(b.title, b.author || "", null, false))); } catch (e) {}
     }
   };
   await Promise.all([worker(), worker(), worker()]);

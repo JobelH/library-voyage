@@ -1,6 +1,6 @@
 // Keeps the app working offline: the page, the map shapes and the libraries are cached.
 // Book lookups (Open Library, Wikidata) still need a connection.
-const CACHE = "litvoyage-v1";
+const CACHE = "litvoyage-v2";
 const CORE = ["./", "index.html", "countries-110m.json", "manifest.json", "icon-192.png", "icon-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js",
   "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js",
